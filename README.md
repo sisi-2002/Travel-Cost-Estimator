@@ -1,4 +1,4 @@
-# Travel Cost Estimator
+# TravelCraft
 
 A comprehensive API for estimating travel costs including flights, hotels, and daily expenses. Built with FastAPI, SQLAlchemy, and async Python.
 
