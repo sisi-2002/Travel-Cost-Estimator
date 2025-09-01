@@ -11,6 +11,7 @@ A comprehensive API for estimating travel costs including flights, hotels, and d
 - **Price Trends**: Track price trends and get booking recommendations
 - **Currency Conversion**: Convert costs between different currencies
 - **RESTful API**: Clean, documented API with automatic OpenAPI/Swagger documentation
+LLM 
 
 ## Project Structure
 
