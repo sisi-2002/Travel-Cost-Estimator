@@ -281,7 +281,7 @@ flake8 .
 # Type checking
 mypy .
 ```
-
+### 6. Run the Application
 ### Database Migrations
 
 ```bash
