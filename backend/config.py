@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     secret_key: str
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
-    
+
     # Server Configuration
     host: str = "0.0.0.0"
     port: int = 8005
@@ -22,8 +22,11 @@ class Settings(BaseSettings):
     amadeus_client_secret: str
     amadeus_hostname: str = "test.api.amadeus.com"
 
-    GROK_API_KEY: str
-    GROK_API_URL: str
+
+    # Grok API Configuration
+    grok_api_key: str
+    grok_api_url: str
+    
     
     class Config:
         env_file = ".env"
