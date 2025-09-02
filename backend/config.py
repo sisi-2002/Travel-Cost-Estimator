@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     amadeus_client_id: str
     amadeus_client_secret: str
     amadeus_hostname: str = "test.api.amadeus.com"
+
+    GROK_API_KEY: str
+    GROK_API_URL: str
     
     class Config:
         env_file = ".env"
