@@ -1,4 +1,5 @@
 import { useState } from "react";
+import AgentInsights from "@/components/AgentInsights";
 
 const PlanWithAI = () => {
   const [form, setForm] = useState({
@@ -17,6 +18,8 @@ const PlanWithAI = () => {
   });
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const [agenticMode, setAgenticMode] = useState(false);
+  const [agenticResult, setAgenticResult] = useState<any>(null);
   const [error, setError] = useState(null);
 
   const handleChange = (e) => {
@@ -68,7 +71,9 @@ const PlanWithAI = () => {
       
       for (const baseUrl of baseUrls) {
         try {
-          const url = `${baseUrl}/api/v1/generate-travel-plan`;
+          const url = agenticMode
+            ? `${baseUrl}/api/v1/agentic/estimate-travel-cost`
+            : `${baseUrl}/api/v1/generate-travel-plan`;
           console.log(`Trying URL: ${url}`);
           
           response = await fetch(url, {
@@ -77,7 +82,20 @@ const PlanWithAI = () => {
               "Content-Type": "application/json",
               "Accept": "application/json"
             },
-            body: JSON.stringify(payload),
+            body: agenticMode
+              ? JSON.stringify({
+                  origin: form.destination.split(",")[0] || form.destination,
+                  destination: form.destination.split(",")[0] || form.destination,
+                  departure_date: "2025-10-01",
+                  return_date: "2025-10-08",
+                  travelers: parseInt(form.num_travelers) || 1,
+                  currency: form.currency,
+                  preferences: {
+                    max_stops: 0,
+                    exclude_redeye: true,
+                  },
+                })
+              : JSON.stringify(payload),
           });
           
           if (response.ok) {
@@ -101,7 +119,11 @@ const PlanWithAI = () => {
       const data = await response.json();
       console.log("Received data:", data);
       
-      setResult(data.answer || "No plan generated.");
+      if (agenticMode) {
+        setAgenticResult(data.result || null);
+      } else {
+        setResult(data.answer || "No plan generated.");
+      }
       
     } catch (err) {
       console.error("Error generating plan:", err);
@@ -440,8 +462,14 @@ const PlanWithAI = () => {
         </div>
       )}
 
-      {/* Results Display */}
-      {result && (
+      {/* Agentic Toggle */}
+      <div className="mt-6 flex items-center gap-3">
+        <input id="agenticMode" type="checkbox" checked={agenticMode} onChange={(e) => setAgenticMode(e.target.checked)} />
+        <label htmlFor="agenticMode" className="text-sm text-gray-700">Use Agentic Cost Estimator</label>
+      </div>
+
+      {/* Results Display (Legacy AI Plan) */}
+      {(!agenticMode && result) && (
         <div className="mt-8 p-6 bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl shadow-lg">
           <h3 className="font-bold text-2xl mb-4 text-green-800 flex items-center">
             <svg className="w-7 h-7 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -471,6 +499,14 @@ const PlanWithAI = () => {
               ✨ Plan Another Trip
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Agentic Results Display */}
+      {(agenticMode && agenticResult) && (
+        <div className="mt-8 p-6 bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl shadow-lg">
+          <h3 className="font-bold text-2xl mb-4 text-indigo-800">Agentic Insights</h3>
+          <AgentInsights result={agenticResult} />
         </div>
       )}
 

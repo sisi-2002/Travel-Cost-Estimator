@@ -5,6 +5,7 @@ import logging
 
 # Import routers
 from routers import auth, flights, plans
+from routers import agentic as agentic_router
 
 # Import database manager (make sure this exists)
 try:
@@ -75,6 +76,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
 app.include_router(flights.router, prefix="/api/v1", tags=["flights"])
 app.include_router(plans.router, prefix="/api/v1", tags=["travel-planning"])
+app.include_router(agentic_router.router, prefix="/api/v1", tags=["agentic"])
 
 @app.get("/")
 async def root():

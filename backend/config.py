@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     # Grok API Configuration
     grok_api_key: str
     grok_api_url: str
+    # Optional: Groq model name (to avoid extra field errors if present in .env)
+    groq_model: Optional[str] = None
+    # Optional: Live FX rates endpoint (e.g., https://api.exchangerate.host/convert)
+    fx_api_url: Optional[str] = None
     
     
     class Config:
