@@ -9,7 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import FlightSearch from "./pages/FlightSearch";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
-
+import PlanWithAI from "./pages/PlanWithAI";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -24,7 +24,9 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/flights" element={<FlightSearch />} />
+            <Route path="/plan-ai" element={<PlanWithAI />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Footer />
