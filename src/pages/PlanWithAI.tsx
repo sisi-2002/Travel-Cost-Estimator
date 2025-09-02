@@ -16,10 +16,10 @@ const PlanWithAI = () => {
     language: ""
   });
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleChange = (e) => {
     const { name, value } = e.target;
     setForm({ ...form, [name]: value });
   };
@@ -27,7 +27,7 @@ const PlanWithAI = () => {
   const handleSubmit = async () => {
     // Basic validation
     if (!form.destination || !form.total_budget) {
-      setError("Please fill in all required fields.");
+      setError("Please fill in destination and budget fields.");
       return;
     }
 
@@ -36,44 +36,95 @@ const PlanWithAI = () => {
     setError(null);
 
     try {
-      // Prepare the payload to match backend TravelQuerr model
+      // Prepare the payload to match backend TravelQuery model
       const payload = {
-        destination: form.destination,
-        nights: Number(form.nights),
-        total_budget: Number(form.total_budget),
-        num_travelers: Number(form.num_travelers),
+        destination: form.destination.trim(),
+        nights: parseInt(form.nights) || 1,
+        total_budget: parseFloat(form.total_budget) || 0,
+        num_travelers: parseInt(form.num_travelers) || 1,
         currency: form.currency,
-        preferences: form.preferences.split(",").map((p) => p.trim()).filter(p => p !== ""),
-        suggestions: Number(form.suggestions),
+        preferences: form.preferences 
+          ? form.preferences.split(",").map((p) => p.trim()).filter(p => p !== "")
+          : [],
+        suggestions: parseInt(form.suggestions) || 1,
         transport: form.transport || null,
         accommodation: form.accommodation || null,
         meal: form.meal || null,
         activities: form.activities || null,
         language: form.language || null,
       };
-
-      const response = await fetch("/api/v1/generate-travel-plan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      
+      console.log("Submitting payload:", payload);
+      
+      // Try different base URLs in case of development/production differences
+      const baseUrls = [
+        "", // Relative URL (same origin)
+        "http://localhost:8005", // Your FastAPI server
+        "http://127.0.0.1:8005",
+      ];
+      
+      let response = null;
+      let lastError = null;
+      
+      for (const baseUrl of baseUrls) {
+        try {
+          const url = `${baseUrl}/api/v1/generate-travel-plan`;
+          console.log(`Trying URL: ${url}`);
+          
+          response = await fetch(url, {
+            method: "POST",
+            headers: { 
+              "Content-Type": "application/json",
+              "Accept": "application/json"
+            },
+            body: JSON.stringify(payload),
+          });
+          
+          if (response.ok) {
+            console.log(`Success with URL: ${url}`);
+            break;
+          } else {
+            console.log(`Failed with URL: ${url}, status: ${response.status}`);
+            lastError = `HTTP ${response.status}: ${response.statusText}`;
+          }
+        } catch (fetchError) {
+          console.log(`Network error with URL: ${baseUrl}/api/v1/generate-travel-plan`);
+          lastError = fetchError.message;
+          continue;
+        }
+      }
+      
+      if (!response || !response.ok) {
+        throw new Error(lastError || `HTTP error! status: ${response?.status || 'Network Error'}`);
       }
 
       const data = await response.json();
+      console.log("Received data:", data);
+      
       setResult(data.answer || "No plan generated.");
+      
     } catch (err) {
       console.error("Error generating plan:", err);
-      setError(err instanceof Error ? err.message : "Error generating travel plan. Please try again.");
+      const errorMessage = err instanceof Error ? err.message : "Error generating travel plan. Please try again.";
+      setError(`Failed to generate travel plan: ${errorMessage}`);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyPress = (e) => {
     if (e.key === 'Enter' && e.ctrlKey) {
       handleSubmit();
+    }
+  };
+
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(result);
+      // You could add a toast notification here
+      console.log("Plan copied to clipboard");
+    } catch (err) {
+      console.error("Failed to copy to clipboard:", err);
     }
   };
 
@@ -407,11 +458,12 @@ const PlanWithAI = () => {
           {/* Action Buttons */}
           <div className="mt-4 flex gap-3 justify-end">
             <button
-              onClick={() => navigator.clipboard.writeText(result)}
+              onClick={copyToClipboard}
               className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm font-medium"
             >
               📋 Copy Plan
             </button>
+
             <button
               onClick={() => setResult(null)}
               className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
@@ -432,6 +484,8 @@ const PlanWithAI = () => {
           <li>• Consider seasonal factors for your destination</li>
         </ul>
       </div>
+
+      
     </div>
   );
 };
