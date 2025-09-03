@@ -440,7 +440,9 @@ const PlanWithAI = () => {
         </div>
       )}
 
-      {/* Results Display */}
+      {/* Removed agentic mini form to restore original page */}
+
+      {/* Results Display (Legacy AI Plan) */}
       {result && (
         <div className="mt-8 p-6 bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl shadow-lg">
           <h3 className="font-bold text-2xl mb-4 text-green-800 flex items-center">
@@ -473,6 +475,8 @@ const PlanWithAI = () => {
           </div>
         </div>
       )}
+
+      {/* No agentic results on this page */}
 
       {/* Tips Section */}
       <div className="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-200">
