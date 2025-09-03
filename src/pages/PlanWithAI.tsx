@@ -462,14 +462,10 @@ const PlanWithAI = () => {
         </div>
       )}
 
-      {/* Agentic Toggle */}
-      <div className="mt-6 flex items-center gap-3">
-        <input id="agenticMode" type="checkbox" checked={agenticMode} onChange={(e) => setAgenticMode(e.target.checked)} />
-        <label htmlFor="agenticMode" className="text-sm text-gray-700">Use Agentic Cost Estimator</label>
-      </div>
+      {/* Removed agentic mini form to restore original page */}
 
       {/* Results Display (Legacy AI Plan) */}
-      {(!agenticMode && result) && (
+      {result && (
         <div className="mt-8 p-6 bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl shadow-lg">
           <h3 className="font-bold text-2xl mb-4 text-green-800 flex items-center">
             <svg className="w-7 h-7 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -502,13 +498,7 @@ const PlanWithAI = () => {
         </div>
       )}
 
-      {/* Agentic Results Display */}
-      {(agenticMode && agenticResult) && (
-        <div className="mt-8 p-6 bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl shadow-lg">
-          <h3 className="font-bold text-2xl mb-4 text-indigo-800">Agentic Insights</h3>
-          <AgentInsights result={agenticResult} />
-        </div>
-      )}
+      {/* No agentic results on this page */}
 
       {/* Tips Section */}
       <div className="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-200">
