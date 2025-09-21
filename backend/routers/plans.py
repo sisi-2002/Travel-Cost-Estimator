@@ -13,6 +13,7 @@ router = APIRouter()
 
 class TravelQuery(BaseModel):
     destination: str = Field(..., description="Travel destination")
+    origin:str=Field(..., description="Travel origin")
     nights: int = Field(..., ge=1, le=365, description="Number of nights")
     total_budget: float = Field(..., ge=0, description="Total budget amount")
     num_travelers: int = Field(..., ge=1, le=20, description="Number of travelers")
@@ -39,7 +40,7 @@ async def generate_travel_plan(travel_query: TravelQuery):
         
         # Build the user query prompt
         query = (
-            f"Plan a {travel_query.nights}-night trip to {travel_query.destination} "
+            f"Plan a {travel_query.nights}-night trip from {travel_query.origin} to {travel_query.destination} "
             f"for {travel_query.num_travelers} people with a total budget of "
             f"{travel_query.total_budget} {travel_query.currency}."
         )
