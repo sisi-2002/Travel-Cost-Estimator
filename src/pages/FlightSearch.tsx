@@ -63,9 +63,10 @@ const FlightSearch = () => {
       );
       console.log('Flight search results:', data);
       setFlights(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Flight search error:', err);
-      setError(err.message || 'An error occurred while searching for flights');
+      const message = err instanceof Error ? err.message : 'An error occurred while searching for flights';
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -173,24 +174,10 @@ const FlightSearch = () => {
             />
           </div>
         </div>
-        
-        <div className="flex gap-4">
-          <button
-            type="submit"
-            disabled={loading}
-            className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:bg-blue-300"
-          >
-            {loading ? 'Searching...' : 'Search Flights'}
-          </button>
-          
-          {/* Debug button */}
-          <button
-            type="button"
-            onClick={debugFlightData}
-            className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-          >
-            Debug Data
-          </button>
+        {/* Agentic controls removed to restore original page */}
+        <div className="flex gap-4 mt-4">
+          <button type="submit" disabled={loading} className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:bg-blue-300">{loading ? 'Searching...' : 'Search Flights'}</button>
+          <button type="button" onClick={debugFlightData} className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">Debug Data</button>
         </div>
       </form>
       
