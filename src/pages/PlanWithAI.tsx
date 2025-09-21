@@ -2,6 +2,7 @@ import { useState } from "react";
 
 const PlanWithAI = () => {
   const [form, setForm] = useState({
+    origin: "",
     destination: "",
     nights: 1,
     total_budget: "",
@@ -39,6 +40,7 @@ const PlanWithAI = () => {
       // Prepare the payload to match backend TravelQuery model
       const payload = {
         destination: form.destination.trim(),
+        origin: form.origin.trim(),
         nights: parseInt(form.nights) || 1,
         total_budget: parseFloat(form.total_budget) || 0,
         num_travelers: parseInt(form.num_travelers) || 1,
@@ -150,6 +152,20 @@ const PlanWithAI = () => {
             </h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Origin *
+                </label>
+                <input
+                  className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  name="origin"
+                  placeholder="e.g., Paris, Tokyo, Maldives"
+                  value={form.origin}
+                  onChange={handleChange}
+                  onKeyPress={handleKeyPress}
+                  required
+                />
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Destination *

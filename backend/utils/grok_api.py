@@ -12,6 +12,9 @@ logger = logging.getLogger(__name__)
 GROK_API_KEY = os.getenv("GROK_API_KEY")
 GROK_API_URL = os.getenv("GROK_API_URL")
 
+print(f"GROK_API_KEY: {GROK_API_KEY is not None}")
+print(f"GROK_API_URL: {GROK_API_URL}")
+
 def ask_grok(query: str, system_role: str = "You are a helpful travel assistant.") -> str:
     """
     Send a query to the Grok API and return the response
