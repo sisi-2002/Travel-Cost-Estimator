@@ -1,8 +1,9 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(extra='ignore', env_file='.env', case_sensitive=False)
     # MongoDB Configuration
     mongodb_uri: str
     database_name: str = "tripcraft"
@@ -28,9 +29,7 @@ class Settings(BaseSettings):
     grok_api_url: str
     
     
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
+    # Remove legacy Config; settings configured via model_config
 
 
     
