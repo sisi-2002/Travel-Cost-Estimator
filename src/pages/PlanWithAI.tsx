@@ -20,6 +20,55 @@ const PlanWithAI = () => {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
 
+ const parseTravelPlan = (rawText) => {
+  if (!rawText) return [];
+
+  const lines = rawText.split("\n");
+  const structured = [];
+  let currentSection = null;
+
+  lines.forEach((line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+
+    // Day heading
+    if (/^\*\*(.+)\*\*$/.test(trimmed)) {
+      const title = trimmed.replace(/^\*\*(.+)\*\*$/, "$1").trim();
+      currentSection = { type: "day", title, items: [] };
+      structured.push(currentSection);
+      return;
+    }
+
+    // Time or subheading (Morning/Afternoon/Evening)
+    if (/^\*\s*\*\*(.+)\*\*$/.test(trimmed)) {
+      const title = trimmed.replace(/^\*\s*\*\*(.+)\*\*$/, "$1").trim();
+      currentSection = { type: "subsection", title, items: [] };
+      structured.push(currentSection);
+      return;
+    }
+
+    // Bullet point
+    if (/^[-*+]\s+/.test(trimmed)) {
+      if (!currentSection) {
+        currentSection = { type: "subsection", title: "", items: [] };
+        structured.push(currentSection);
+      }
+      currentSection.items.push(trimmed.replace(/^[-*+]\s+/, ""));
+      return;
+    }
+
+    // Regular text
+    if (!currentSection) {
+      currentSection = { type: "subsection", title: "", items: [] };
+      structured.push(currentSection);
+    }
+    currentSection.items.push(trimmed);
+  });
+
+  return structured;
+};
+
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm({ ...form, [name]: value });
@@ -468,10 +517,24 @@ const PlanWithAI = () => {
             Your AI-Generated Travel Plan
           </h3>
           <div className="bg-white p-6 rounded-lg shadow-sm border border-green-100 max-h-96 overflow-y-auto">
-            <pre className="whitespace-pre-wrap text-gray-800 leading-relaxed font-mono text-sm">
-              {result}
-            </pre>
+            {parseTravelPlan(result).map((section, index) => (
+              <div key={index} className="mb-4">
+                {section.title && (
+                  <h4 className={`font-semibold ${section.type === 'day' ? 'text-xl' : 'text-lg'} text-green-800 mb-2`}>
+                    {section.title}
+                  </h4>
+                )}
+                {section.items.length > 0 && (
+                  <ul className="list-disc list-inside text-gray-800 text-sm leading-relaxed">
+                    {section.items.map((item, i) => (
+                      <li key={i}>{item}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ))}
           </div>
+
           
           {/* Action Buttons */}
           <div className="mt-4 flex gap-3 justify-end">
