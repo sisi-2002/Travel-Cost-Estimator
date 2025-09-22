@@ -17,7 +17,7 @@ const Navbar = () => {
     { name: "Services", href: "#services" },
     { name: "About", href: "#about" },
     { name: "Contact", href: "#contact" },
-    { name: "Plan with AI", href: "/plan-ai" }, // <-- Added this line
+    { name: "Plan with AI ", href: "/plan-ai" }, // <-- Added this line
     ...(isAuthenticated ? [{ name: "Dashboard", href: "/dashboard" }] : []),
   ];
 
