@@ -10,6 +10,9 @@ import FlightSearch from "./pages/FlightSearch";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import PlanWithAI from "./pages/PlanWithAI";
+import ProtectedRoute from "./components/ui/ProtectedRoute";
+import Authenticate from './components/AuthModal';
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -22,11 +25,10 @@ const App = () => (
           <Navbar />
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/auth" element={<Authenticate />} />
+            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/flights" element={<FlightSearch />} />
-            <Route path="/plan-ai" element={<PlanWithAI />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-
+            <Route path="/plan-ai" element={<ProtectedRoute><PlanWithAI /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Footer />

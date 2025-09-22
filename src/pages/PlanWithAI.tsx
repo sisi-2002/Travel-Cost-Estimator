@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext"; // Import useAuth for consistent auth checking
 
 const PlanWithAI = () => {
   const [form, setForm] = useState({
@@ -19,55 +21,56 @@ const PlanWithAI = () => {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth(); // Use context for auth status
 
- const parseTravelPlan = (rawText) => {
-  if (!rawText) return [];
+  const parseTravelPlan = (rawText) => {
+    if (!rawText) return [];
 
-  const lines = rawText.split("\n");
-  const structured = [];
-  let currentSection = null;
+    const lines = rawText.split("\n");
+    const structured = [];
+    let currentSection = null;
 
-  lines.forEach((line) => {
-    const trimmed = line.trim();
-    if (!trimmed) return;
+    lines.forEach((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) return;
 
-    // Day heading
-    if (/^\*\*(.+)\*\*$/.test(trimmed)) {
-      const title = trimmed.replace(/^\*\*(.+)\*\*$/, "$1").trim();
-      currentSection = { type: "day", title, items: [] };
-      structured.push(currentSection);
-      return;
-    }
+      // Day heading
+      if (/^\*\*(.+)\*\*$/.test(trimmed)) {
+        const title = trimmed.replace(/^\*\*(.+)\*\*$/, "$1").trim();
+        currentSection = { type: "day", title, items: [] };
+        structured.push(currentSection);
+        return;
+      }
 
-    // Time or subheading (Morning/Afternoon/Evening)
-    if (/^\*\s*\*\*(.+)\*\*$/.test(trimmed)) {
-      const title = trimmed.replace(/^\*\s*\*\*(.+)\*\*$/, "$1").trim();
-      currentSection = { type: "subsection", title, items: [] };
-      structured.push(currentSection);
-      return;
-    }
+      // Time or subheading (Morning/Afternoon/Evening)
+      if (/^\*\s*\*\*(.+)\*\*$/.test(trimmed)) {
+        const title = trimmed.replace(/^\*\s*\*\*(.+)\*\*$/, "$1").trim();
+        currentSection = { type: "subsection", title, items: [] };
+        structured.push(currentSection);
+        return;
+      }
 
-    // Bullet point
-    if (/^[-*+]\s+/.test(trimmed)) {
+      // Bullet point
+      if (/^[-*+]\s+/.test(trimmed)) {
+        if (!currentSection) {
+          currentSection = { type: "subsection", title: "", items: [] };
+          structured.push(currentSection);
+        }
+        currentSection.items.push(trimmed.replace(/^[-*+]\s+/, ""));
+        return;
+      }
+
+      // Regular text
       if (!currentSection) {
         currentSection = { type: "subsection", title: "", items: [] };
         structured.push(currentSection);
       }
-      currentSection.items.push(trimmed.replace(/^[-*+]\s+/, ""));
-      return;
-    }
+      currentSection.items.push(trimmed);
+    });
 
-    // Regular text
-    if (!currentSection) {
-      currentSection = { type: "subsection", title: "", items: [] };
-      structured.push(currentSection);
-    }
-    currentSection.items.push(trimmed);
-  });
-
-  return structured;
-};
-
+    return structured;
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -75,6 +78,13 @@ const PlanWithAI = () => {
   };
 
   const handleSubmit = async () => {
+    // Check authentication using useAuth context
+    if (!isAuthenticated) {
+      setError("Please log in to generate a travel plan.");
+      navigate("/auth", { state: { from: "/plan-ai" } }); // Redirect to auth with return URL
+      return;
+    }
+
     // Basic validation
     if (!form.destination || !form.total_budget) {
       setError("Please fill in destination and budget fields.");
@@ -107,10 +117,10 @@ const PlanWithAI = () => {
       
       console.log("Submitting payload:", payload);
       
-      // Try different base URLs in case of development/production differences
+      // Try different base URLs for development/production
       const baseUrls = [
         "", // Relative URL (same origin)
-        "http://localhost:8005", // Your FastAPI server
+        "http://localhost:8005",
         "http://127.0.0.1:8005",
       ];
       
@@ -126,7 +136,8 @@ const PlanWithAI = () => {
             method: "POST",
             headers: { 
               "Content-Type": "application/json",
-              "Accept": "application/json"
+              "Accept": "application/json",
+              "Authorization": `Bearer ${localStorage.getItem("jwt_token")}`
             },
             body: JSON.stringify(payload),
           });
@@ -172,7 +183,6 @@ const PlanWithAI = () => {
   const copyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(result);
-      // You could add a toast notification here
       console.log("Plan copied to clipboard");
     } catch (err) {
       console.error("Failed to copy to clipboard:", err);
@@ -505,8 +515,6 @@ const PlanWithAI = () => {
         </div>
       )}
 
-      {/* Removed agentic mini form to restore original page */}
-
       {/* Results Display (Legacy AI Plan) */}
       {result && (
         <div className="mt-8 p-6 bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl shadow-lg">
@@ -535,7 +543,6 @@ const PlanWithAI = () => {
             ))}
           </div>
 
-          
           {/* Action Buttons */}
           <div className="mt-4 flex gap-3 justify-end">
             <button
@@ -555,8 +562,6 @@ const PlanWithAI = () => {
         </div>
       )}
 
-      {/* No agentic results on this page */}
-
       {/* Tips Section */}
       <div className="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-200">
         <h4 className="font-semibold text-blue-800 mb-2">💡 Pro Tips for Better Plans:</h4>
@@ -567,8 +572,6 @@ const PlanWithAI = () => {
           <li>• Consider seasonal factors for your destination</li>
         </ul>
       </div>
-
-      
     </div>
   );
 };
