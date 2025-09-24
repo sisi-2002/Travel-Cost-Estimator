@@ -9,10 +9,11 @@ class UserBase(BaseModel):
     phone: Optional[str] = Field(None, min_length=10, max_length=15)
 
 
-class UserCreate(UserBase):
-    password: str = Field(..., min_length=8, max_length=100)
-
-
+class UserCreate(BaseModel):
+    email: EmailStr
+    password: str = Field(..., min_length=8)
+    full_name: str
+    phone: Optional[str] = None
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
@@ -43,10 +44,8 @@ class PasswordChange(BaseModel):
 
 
 class UserUpdate(BaseModel):
-    full_name: Optional[str] = Field(None, min_length=2, max_length=100)
-    phone: Optional[str] = Field(None, min_length=10, max_length=15)
-
-
+    full_name: Optional[str] = None
+    phone: Optional[str] = None
 class TravelBooking(BaseModel):
     id:Optional[str]=Field(default=None, alias="_id")
     user_id: str
