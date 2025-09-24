@@ -4,7 +4,9 @@ from contextlib import asynccontextmanager
 import logging
 
 # Import routers
-from routers import auth, flights, plans, hotels
+
+from routers import auth, flights, plans, hotels,subscriptions
+
 
 # Import database manager (make sure this exists)
 try:
@@ -76,6 +78,8 @@ app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
 app.include_router(flights.router, prefix="/api/v1", tags=["flights"])
 app.include_router(plans.router, prefix="/api/v1", tags=["travel-planning"])
 app.include_router(hotels.router, prefix="/api/v1", tags=["hotels"])
+app.include_router(subscriptions.router, prefix="/api/v1", tags=["subscriptions"])
+
 
 @app.get("/")
 async def root():
@@ -87,7 +91,10 @@ async def root():
         "endpoints": {
             "docs": "/docs",
             "health": "/health",
-            "travel_plans": "/api/v1/generate-travel-plan"
+            "travel_plans": "/api/v1/generate-travel-plan",
+            "subscribe": "/api/v1/subscribe",
+            "webhook": "/api/v1/subscription/webhook",
+            "auth": "/api/v1/auth"
         }
     }
 
@@ -121,7 +128,11 @@ async def not_found_handler(request, exc):
             "/health", 
             "/api/v1/health",
             "/api/v1/generate-travel-plan",
-            "/docs"
+            "/api/v1/subscribe",
+            "/docs",
+            "/api/v1/subscription/webhook",
+            "/api/v1/auth"
+        
         ]
     }
 

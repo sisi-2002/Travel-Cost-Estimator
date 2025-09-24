@@ -1,13 +1,20 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel, Field
 from typing import List, Optional
 import logging
+from datetime import datetime, timedelta
 
 # Import your grok utility (make sure this path is correct)
 from utils.grok_api import ask_grok
 
 # Configure logging
 logger = logging.getLogger(__name__)
+
+
+
+#import Auth and crud
+from auth import get_current_active_user
+from crud import user_crud
 
 router = APIRouter()
 
@@ -31,13 +38,21 @@ class TravelPlanResponse(BaseModel):
     answer: str
 
 @router.post("/generate-travel-plan", response_model=TravelPlanResponse)
-async def generate_travel_plan(travel_query: TravelQuery):
+async def generate_travel_plan(
+    travel_query: TravelQuery,
+    current_user: dict = Depends(get_current_active_user)):
     """
     Generate a travel plan using AI based on user preferences
     """
     try:
-        logger.info(f"Received travel query for destination: {travel_query.destination}")
-        
+        logger.info(f"Received travel query for destination: {travel_query.destination} from user: {current_user['email']}")      
+
+        # Check subscription and daily limits
+        can_generate = await user_crud.check_can_generate_plan(current_user['id'])
+        if not can_generate:
+            raise HTTPException(status_code=403, detail="Daily limit reached or subscription expired. Upgrade to premium for unlimited access.")
+
+
         # Build the user query prompt
         query = (
             f"Plan a {travel_query.nights}-night trip from {travel_query.origin} to {travel_query.destination} "
@@ -86,6 +101,9 @@ async def generate_travel_plan(travel_query: TravelQuery):
         if not answer:
             raise HTTPException(status_code=500, detail="No response generated from AI service")
         
+        # Update user's plan generation count
+        await user_crud.update_plan_generation(current_user['id'])
+        
         logger.info("Successfully generated travel plan")
         
         return TravelPlanResponse(query=query, answer=answer)
@@ -93,8 +111,9 @@ async def generate_travel_plan(travel_query: TravelQuery):
     except Exception as e:
         logger.error(f"Error in generate_travel_plan: {str(e)}")
         raise HTTPException(
-            status_code=500, 
+            status_code=status.HTTP_403_FORBIDDEN, 
             detail=f"Failed to generate travel plan: {str(e)}"
+            
         )
 
 @router.get("/health")

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, status, Depends
-from fastapi.security import HTTPBearer
-from datetime import timedelta
+from fastapi.security import HTTPBearer,HTTPAuthorizationCredentials
+from datetime import timedelta, datetime
 from models import (
     UserCreate, UserLogin, UserResponse, Token, 
     PasswordChange, UserUpdate
@@ -9,6 +9,9 @@ from auth import create_access_token, get_current_active_user
 from crud import user_crud
 from config import settings
 import logging
+from typing import Union, Optional, Dict, Any
+from jose import JWTError, jwt
+
 
 logger = logging.getLogger(__name__)
 

@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     
     # JWT Configuration
     secret_key: str
-    algorithm: str = "HS256"
+    algorithm: str = "HS256" 
     access_token_expire_minutes: int = 30
 
     # Server Configuration
@@ -27,6 +27,13 @@ class Settings(BaseSettings):
     # Grok API Configuration
     grok_api_key: str
     grok_api_url: str
+
+
+    #STRIPE Configuration
+    stripe_secret_key: str
+    stripe_publishable_key: str
+    premium_priceid: str
+    web_hook_secret: str
     
     
     # Remove legacy Config; settings configured via model_config
