@@ -12,6 +12,11 @@ export const API_CONFIG = {
     FLIGHTS: {
       SEARCH: '/api/v1/flights/search',
       AIRPORTS: '/api/v1/flights/airports',
+    },
+    HOTELS: {
+      SEARCH: '/api/v1/hotels/search',
+      LIST: '/api/v1/hotels/list',
+      LOCATIONS: '/api/v1/hotels/locations',
     }
   }
 };
@@ -55,6 +60,63 @@ export interface Segment {
   };
   carrierCode: string;
   number: string;
+}
+
+export interface PriceBreakdown {
+  total_cost: number;
+  base_cost: number;
+  additional_fees: number;
+  currency: string;
+  nights: number;
+  rooms: number;
+  adults: number;
+  per_night_total: number;
+  per_room_per_night: number;
+  base_per_room_per_night: number;
+  breakdown_explanation: string;
+}
+
+export interface HotelOffer {
+  hotel: {
+    hotelId: string;
+    name: string;
+    chainCode: string;
+    cityCode: string;
+    latitude?: number;
+    longitude?: number;
+    distance?: {
+      value: number;
+      unit: string;
+    };
+  };
+  offers: Array<{
+    id: string;
+    checkInDate: string;
+    checkOutDate: string;
+    price: {
+      currency: string;
+      total: string;
+      base: string;
+    };
+    room: {
+      type: string;
+      description?: {
+        text: string;
+        lang: string;
+      };
+    };
+    policies?: {
+      paymentType: string;
+      cancellation?: {
+        type: string;
+        description?: {
+          text: string;
+        };
+      };
+    };
+    price_breakdown?: PriceBreakdown;
+  }>;
+  available: boolean;
 }
 
 // =======================
@@ -128,6 +190,65 @@ export const getAirportAutocomplete = async (keyword: string): Promise<Airport[]
   
   if (!res.ok) {
     throw new Error(`Failed to get airport suggestions: ${res.statusText}`);
+  }
+  
+  return res.json();
+};
+
+// Hotels
+export const searchHotels = async (
+  destination: string,
+  checkIn: string,
+  checkOut: string,
+  adults: number = 1,
+  roomQuantity: number = 1,
+  maxHotels: number = 10,
+  currency: string = "USD",
+  radius: number = 5,
+  preferences?: string,
+  includeSummary: boolean = false
+): Promise<{
+  hotels: HotelOffer[];
+  search_metadata?: any;
+  ai_summary?: string;
+  premium_features?: any;
+}> => {
+  const params = new URLSearchParams({
+    destination,
+    check_in: checkIn,
+    check_out: checkOut,
+    adults: String(adults),
+    room_quantity: String(roomQuantity),
+    max_hotels: String(maxHotels),
+    currency,
+    radius: String(radius),
+    include_summary: String(includeSummary)
+  });
+  
+  if (preferences) {
+    params.append('preferences', preferences);
+  }
+  
+  const res = await fetch(`${buildApiUrl(API_CONFIG.ENDPOINTS.HOTELS.SEARCH)}?${params}`, {
+    method: 'GET',
+    credentials: 'include',
+  });
+  
+  if (!res.ok) {
+    throw new Error(`Failed to search hotels: ${res.statusText}`);
+  }
+  
+  return res.json();
+};
+
+export const getHotelLocations = async (keyword: string): Promise<Airport[]> => {
+  const res = await fetch(`${buildApiUrl(API_CONFIG.ENDPOINTS.HOTELS.LOCATIONS)}?keyword=${encodeURIComponent(keyword)}`, {
+    method: 'GET',
+    credentials: 'include',
+  });
+  
+  if (!res.ok) {
+    throw new Error(`Failed to get hotel locations: ${res.statusText}`);
   }
   
   return res.json();

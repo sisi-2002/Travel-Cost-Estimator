@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 import logging
 
 # Import routers
-from routers import auth, flights, plans
+from routers import auth, flights, plans, hotels
 
 # Import database manager (make sure this exists)
 try:
@@ -75,6 +75,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
 app.include_router(flights.router, prefix="/api/v1", tags=["flights"])
 app.include_router(plans.router, prefix="/api/v1", tags=["travel-planning"])
+app.include_router(hotels.router, prefix="/api/v1", tags=["hotels"])
 
 @app.get("/")
 async def root():
