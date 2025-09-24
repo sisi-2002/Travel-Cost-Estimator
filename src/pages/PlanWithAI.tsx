@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext"; // Import useAuth for consistent auth checking
 
+
+
 const PlanWithAI = () => {
   const [form, setForm] = useState({
     origin: "",
@@ -77,6 +79,15 @@ const PlanWithAI = () => {
     setForm({ ...form, [name]: value });
   };
 
+   const getAuthToken = () => {
+    // Try multiple possible token storage keys
+    return localStorage.getItem("access_token") || 
+           localStorage.getItem("jwt_token") || 
+           localStorage.getItem("token");
+  };
+
+ 
+
   const handleSubmit = async () => {
     // Check authentication using useAuth context
     if (!isAuthenticated) {
@@ -96,6 +107,15 @@ const PlanWithAI = () => {
     setError(null);
 
     try {
+
+       const token = getAuthToken();
+      if (!token) {
+        setError("Authentication token not found. Please log in again.");
+        navigate("/auth", { state: { from: "/plan-ai" } });
+        return;
+      }
+
+
       // Prepare the payload to match backend TravelQuery model
       const payload = {
         destination: form.destination.trim(),
@@ -116,7 +136,8 @@ const PlanWithAI = () => {
       };
       
       console.log("Submitting payload:", payload);
-      
+      console.log("Using token:", token.substring(0, 20) + "...");
+            
       // Try different base URLs for development/production
       const baseUrls = [
         "", // Relative URL (same origin)
@@ -137,7 +158,7 @@ const PlanWithAI = () => {
             headers: { 
               "Content-Type": "application/json",
               "Accept": "application/json",
-              "Authorization": `Bearer ${localStorage.getItem("jwt_token")}`
+              "Authorization": `Bearer ${token}`
             },
             body: JSON.stringify(payload),
           });
@@ -147,8 +168,19 @@ const PlanWithAI = () => {
             break;
           } else {
             console.log(`Failed with URL: ${url}, status: ${response.status}`);
-            lastError = `HTTP ${response.status}: ${response.statusText}`;
-          }
+            const errorData = await response.json().catch(() => ({}));
+            lastError = errorData.detail || `HTTP ${response.status}: ${response.statusText}`;
+
+             // If it's 401, token might be invalid
+            if (response.status === 401) {
+              localStorage.removeItem("access_token");
+              localStorage.removeItem("jwt_token");
+              localStorage.removeItem("token");
+              setError("Authentication failed. Please log in again.");
+              navigate("/auth", { state: { from: "/plan-ai" } });
+              return;
+            }
+                      }
         } catch (fetchError) {
           console.log(`Network error with URL: ${baseUrl}/api/v1/generate-travel-plan`);
           lastError = fetchError.message;
