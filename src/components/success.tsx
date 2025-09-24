@@ -1,83 +1,110 @@
-import { useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { useEffect, useState } from "react";
 
-const SuccessPage: React.FC = () => {
-  const [searchParams] = useSearchParams();
-  const sessionId = searchParams.get('session_id');
+const PaymentSuccess = () => {
   const navigate = useNavigate();
-  const { setIsAuthenticated } = useAuth();
+  const location = useLocation();
+  const { user } = useAuth();
+  const [sessionId, setSessionId] = useState(null);
 
   useEffect(() => {
-    // Optional: Verify the subscription status by calling backend API
-    // This ensures the user is upgraded to premium
-    const verifySubscription = async () => {
-      const token = localStorage.getItem('access_token');
-      if (token && sessionId) {
-        try {
-          const response = await fetch('/api/verify-subscription', { // Adjust endpoint as needed
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
-            },
-            body: JSON.stringify({ session_id: sessionId }),
-          });
+    const params = new URLSearchParams(location.search);
+    const session_id = params.get("session_id");
+    setSessionId(session_id);
 
-          if (response.ok) {
-            // Update auth context if needed
-            setIsAuthenticated(true);
-            // Optionally redirect to dashboard or plan page
-            // navigate('/plan-ai');
-          } else {
-            console.error('Subscription verification failed');
-          }
-        } catch (error) {
-          console.error('Error verifying subscription:', error);
+    const fetchSubscriptionDetails = async () => {
+      try {
+        const response = await fetch("http://localhost:8005/api/v1/auth/me", {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("jwt_token")}`,
+            "Content-Type": "application/json",
+          },
+        });
+        if (!response.ok) {
+          console.error("Failed to fetch user data");
         }
+      } catch (err) {
+        console.error("Error fetching subscription details:", err);
       }
     };
 
-    verifySubscription();
-  }, [sessionId, setIsAuthenticated, navigate]);
+    if (sessionId) {
+      fetchSubscriptionDetails();
+    }
+  }, [sessionId]);
+
+  const handleContinuePlanning = () => {
+    navigate("/plan-ai");
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100">
+      <div className="max-w-lg w-full mx-auto p-8 bg-white rounded-xl shadow-2xl">
         <div className="text-center">
-          <div className="mx-auto h-16 w-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-            <svg className="h-8 w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          <div className="flex justify-center mb-6">
+            <svg
+              className="w-16 h-16 text-green-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
           </div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">Payment Successful!</h2>
-          <p className="text-gray-600 mb-4">
-            Your premium subscription has been activated. Enjoy unlimited AI travel plans!
+
+          <h1 className="text-3xl font-bold text-gray-800 mb-4">
+            Payment Successful!
+          </h1>
+
+          <p className="text-gray-600 mb-6">
+            Congratulations, {user?.full_name || "User"}! Your premium subscription
+            has been activated. You now have unlimited access to AI-powered travel
+            planning.
           </p>
-          {sessionId && (
-            <div className="bg-gray-50 p-3 rounded-lg mb-4">
-              <p className="text-sm font-medium text-gray-900 mb-1">Session ID:</p>
-              <p className="text-sm text-gray-500 break-all">{sessionId}</p>
-            </div>
-          )}
-          <div className="space-y-3 mt-6">
-            <button
-              onClick={() => navigate('/plan-ai')}
-              className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors font-medium"
-            >
-              Generate Travel Plan
-            </button>
-            <button
-              onClick={() => navigate('/dashboard')} // Adjust to your dashboard route
-              className="w-full bg-gray-200 text-gray-900 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors font-medium"
-            >
-              Go to Dashboard
-            </button>
+
+          <div className="bg-green-50 p-4 rounded-lg mb-6 border border-green-200">
+            <h2 className="text-lg font-semibold text-green-800 mb-2">
+              Subscription Details
+            </h2>
+            <p className="text-sm text-gray-700">
+              <span className="font-medium">Plan:</span> Premium
+            </p>
+            <p className="text-sm text-gray-700">
+              <span className="font-medium">Status:</span> Active
+            </p>
+            {sessionId && (
+              <p className="text-sm text-gray-700">
+                <span className="font-medium">Transaction ID:</span> {sessionId}
+              </p>
+            )}
           </div>
+
+          <button
+            onClick={handleContinuePlanning}
+            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-6 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+          >
+            Continue Planning Your Trip
+          </button>
+
+          <p className="text-sm text-gray-500 mt-4">
+            Need help? Contact support at{" "}
+            <a
+              href="mailto:support@tripcraft.com"
+              className="text-blue-600 hover:underline"
+            >
+              support@tripcraft.com
+            </a>
+          </p>
         </div>
       </div>
     </div>
   );
 };
 
-export default SuccessPage;
+export default PaymentSuccess;

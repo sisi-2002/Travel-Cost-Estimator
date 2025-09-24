@@ -19,6 +19,7 @@ stripe.api_key = settings.stripe_secret_key
 async def create_checkout_session(current_user: dict = Depends(get_current_active_user)):
     """Create Stripe checkout session for premium subscription"""
     try:
+        logger.info(f"Creating checkout session for user: {current_user['email']}")
         # Create checkout session
         session = stripe.checkout.Session.create(
             payment_method_types=['card'],
@@ -34,9 +35,14 @@ async def create_checkout_session(current_user: dict = Depends(get_current_activ
             cancel_url='http://localhost:8080/cancel',
             metadata={'user_id': current_user['id']}
         )
-        
+        logger.info(f"Checkout session created: {session.id}")
         return {"session_id": session.id}
-    
+    except stripe.error.StripeError as e:
+        logger.error(f"Stripe error creating checkout session: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Stripe error: {str(e)}")
+    except Exception as e:
+        logger.error(f"Error creating checkout session: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to create checkout session: {str(e)}")
     except Exception as e:
         logger.error(f"Error creating checkout session: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -64,15 +70,19 @@ async def stripe_webhook(request: Request):
         user_id = session['metadata'].get('user_id')
         if user_id:
             payment_detail = {
-                'payment_id': session['payment_intent'],
-                'amount': session['amount_total'] / 100 if session['amount_total'] else 0,
-                'currency': session['currency'].upper(),
-                'date': datetime.utcnow(),
-                'status': 'completed'
+                "payment_id": session.get("payment_intent") or session.get("id"),
+                "amount": session.get("amount_total", 0) / 100,
+                "currency": session.get("currency", "usd").upper(),
+                "date": datetime.utcnow(),
+                "status": "completed",
             }
             await user_crud.upgrade_to_premium(user_id, payment_detail)
             logger.info(f"Premium subscription activated for user {user_id}")
+            print(f"Premium subscription activated for user {user_id}")
+        else:
+            logger.warning("No user_id found in webhook metadata")
+
+    return JSONResponse(status_code=200, content={"status": "success"})
     
     # ... handle other event types if needed
     
-    return JSONResponse(status_code=200, content={"status": "success"})
