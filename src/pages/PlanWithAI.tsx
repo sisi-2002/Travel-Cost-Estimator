@@ -15,7 +15,7 @@ const PlanWithAI = () => {
     num_travelers: 1,
     currency: "USD",
     preferences: "",
-    suggestions: 1,
+    suggestions: 1, 
     transport: "",
     accommodation: "",
     meal: "",
@@ -26,6 +26,7 @@ const PlanWithAI = () => {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [limitReached, setLimitReached] = useState(false); // New state for limit reached
+  
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth(); // Use context for auth status
 
@@ -69,7 +70,7 @@ const PlanWithAI = () => {
       // Regular text
       if (!currentSection) {
         currentSection = { type: "subsection", title: "", items: [] };
-        structured.push(currentSection);
+        structured.push(currentSection)
       }
       currentSection.items.push(trimmed);
     });
@@ -93,13 +94,15 @@ const PlanWithAI = () => {
     try {
       const token = getAuthToken();
       if (!token) {
-        setError("Authentication token not found. Please log in again.");
+        setError("Please log in to upgrade your subscription.");
         navigate("/auth", { state: { from: "/plan-ai" } });
         return;
       }
+      const backendUrl = "http://localhost:8005/api/v1/subscribe"; // Use explicit backend URL
+      console.log("Initiating subscription request to:", backendUrl);
 
       // Call backend to create checkout session
-      const response = await fetch("/api/v1/subscribe", { // Adjust base URL if needed
+      const response = await fetch(backendUrl, { // Adjust base URL if needed
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -107,12 +110,14 @@ const PlanWithAI = () => {
         },
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "Failed to create checkout session");
+       if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `HTTP ${response.status}: Failed to create checkout session`);
       }
 
+
       const { session_id } = await response.json();
+      console.log("Received session ID:", session_id);
 
       // Redirect to Stripe Checkout
       const stripe = await stripePromise;
@@ -209,21 +214,19 @@ const PlanWithAI = () => {
             lastError = errorData.detail || `HTTP ${response.status}: ${response.statusText}`;
 
             // Handle 403 specifically for limit reached
-            if (response.status === 403) {
-              setLimitReached(true);
-              setError(errorData.detail || "Daily limit reached or subscription expired. Upgrade to premium for unlimited access.");
-              return;
-            }
-
-            // If it's 401, token might be invalid
-            if (response.status === 401) {
-              localStorage.removeItem("access_token");
-              localStorage.removeItem("jwt_token");
-              localStorage.removeItem("token");
-              setError("Authentication failed. Please log in again.");
-              navigate("/auth", { state: { from: "/plan-ai" } });
-              return;
-            }
+                if (response.status === 403) {
+                    setLimitReached(true);
+                    setError(errorData.detail || "Daily limit reached or subscription expired. Upgrade to premium for unlimited access.");
+                    return;
+                }
+                if (response.status === 401) {
+                    localStorage.removeItem("access_token");
+                    localStorage.removeItem("jwt_token");
+                    localStorage.removeItem("token");
+                    setError("Authentication failed. Please log in again.");
+                    navigate("/auth", { state: { from: "/plan-ai" } });
+                    return;
+                }
           }
         } catch (fetchError) {
           console.log(`Network error with URL: ${baseUrl}/api/v1/generate-travel-plan`);

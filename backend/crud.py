@@ -1,11 +1,13 @@
 from pymongo.collection import Collection
 from bson import ObjectId
 from passlib.context import CryptContext
-from datetime import datetime
+from datetime import datetime, timedelta
+from pydantic import BaseModel
 from typing import Optional, Dict, Any
 from models import UserCreate, UserUpdate
 from database import db_manager
 import logging
+
 
 logger = logging.getLogger(__name__)
 
@@ -254,7 +256,7 @@ class UserCRUD:
                         {"_id": ObjectId(user_id)},
                         {"$set": {"plans_today": 0, "last_plan_date": now}}
                     )
-                    plans_today = 0
+                    plans_today = 0 
 
                 return plans_today < 1
 
