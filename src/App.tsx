@@ -12,7 +12,8 @@ import Footer from "./components/Footer";
 import PlanWithAI from "./pages/PlanWithAI";
 import ProtectedRoute from "./components/ui/ProtectedRoute";
 import Authenticate from './components/AuthModal';
-
+import Success from './components/success'
+import CancelPage from './components/CancelPage';
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -29,6 +30,8 @@ const App = () => (
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/flights" element={<FlightSearch />} />
             <Route path="/plan-ai" element={<ProtectedRoute><PlanWithAI /></ProtectedRoute>} />
+            <Route path="/success" element={<Success />} />
+            <Route path="/cancel" element={<CancelPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Footer />

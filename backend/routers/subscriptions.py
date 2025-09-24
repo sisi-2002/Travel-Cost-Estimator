@@ -30,8 +30,8 @@ async def create_checkout_session(current_user: dict = Depends(get_current_activ
             ],
             mode='subscription',
             customer_email=current_user['email'],
-            success_url='http://localhost:3000/success?session_id={CHECKOUT_SESSION_ID}',  # Replace with your success URL
-            cancel_url='http://localhost:3000/cancel',  # Replace with your cancel URL
+            success_url='http://localhost:8080/success?session_id={CHECKOUT_SESSION_ID}',  
+            cancel_url='http://localhost:8080/cancel',
             metadata={'user_id': current_user['id']}
         )
         

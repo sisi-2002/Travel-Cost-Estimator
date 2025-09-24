@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel, Field
 from typing import List, Optional
 import logging
@@ -111,8 +111,9 @@ async def generate_travel_plan(
     except Exception as e:
         logger.error(f"Error in generate_travel_plan: {str(e)}")
         raise HTTPException(
-            status_code=500, 
+            status_code=status.HTTP_403_FORBIDDEN, 
             detail=f"Failed to generate travel plan: {str(e)}"
+            
         )
 
 @router.get("/health")
