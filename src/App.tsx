@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Dashboard from "./pages/Dashboard";
 import FlightSearch from "./pages/FlightSearch";
+import HotelSearch from "./pages/HotelSearch";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import PlanWithAI from "./pages/PlanWithAI";
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/auth" element={<Authenticate />} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/flights" element={<FlightSearch />} />
+            <Route path="/hotels" element={<HotelSearch />} />
             <Route path="/plan-ai" element={<ProtectedRoute><PlanWithAI /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
