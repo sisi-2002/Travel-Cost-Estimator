@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext"; // Import useAuth for consistent auth checking
+import { loadStripe } from '@stripe/stripe-js';
 
-
+// Load Stripe with your publishable key (replace with your actual key or use environment variable)
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY); // Replace with actual key
 
 const PlanWithAI = () => {
   const [form, setForm] = useState({
@@ -13,7 +15,7 @@ const PlanWithAI = () => {
     num_travelers: 1,
     currency: "USD",
     preferences: "",
-    suggestions: 1,
+    suggestions: 1, 
     transport: "",
     accommodation: "",
     meal: "",
@@ -23,6 +25,8 @@ const PlanWithAI = () => {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [limitReached, setLimitReached] = useState(false); // New state for limit reached
+  
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth(); // Use context for auth status
 
@@ -66,7 +70,7 @@ const PlanWithAI = () => {
       // Regular text
       if (!currentSection) {
         currentSection = { type: "subsection", title: "", items: [] };
-        structured.push(currentSection);
+        structured.push(currentSection)
       }
       currentSection.items.push(trimmed);
     });
@@ -79,14 +83,54 @@ const PlanWithAI = () => {
     setForm({ ...form, [name]: value });
   };
 
-   const getAuthToken = () => {
+  const getAuthToken = () => {
     // Try multiple possible token storage keys
     return localStorage.getItem("access_token") || 
            localStorage.getItem("jwt_token") || 
            localStorage.getItem("token");
   };
 
- 
+  const handleUpgrade = async () => {
+    try {
+      const token = getAuthToken();
+      if (!token) {
+        setError("Please log in to upgrade your subscription.");
+        navigate("/auth", { state: { from: "/plan-ai" } });
+        return;
+      }
+      const backendUrl = "http://localhost:8005/api/v1/subscribe"; // Use explicit backend URL
+      console.log("Initiating subscription request to:", backendUrl);
+
+      // Call backend to create checkout session
+      const response = await fetch(backendUrl, { // Adjust base URL if needed
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+      });
+
+       if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `HTTP ${response.status}: Failed to create checkout session`);
+      }
+
+
+      const { session_id } = await response.json();
+      console.log("Received session ID:", session_id);
+
+      // Redirect to Stripe Checkout
+      const stripe = await stripePromise;
+      const { error } = await stripe.redirectToCheckout({ sessionId: session_id });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+    } catch (err) {
+      console.error("Error upgrading subscription:", err);
+      setError(`Failed to initiate upgrade: ${err.message}`);
+    }
+  };
 
   const handleSubmit = async () => {
     // Check authentication using useAuth context
@@ -107,14 +151,12 @@ const PlanWithAI = () => {
     setError(null);
 
     try {
-
-       const token = getAuthToken();
+      const token = getAuthToken();
       if (!token) {
         setError("Authentication token not found. Please log in again.");
         navigate("/auth", { state: { from: "/plan-ai" } });
         return;
       }
-
 
       // Prepare the payload to match backend TravelQuery model
       const payload = {
@@ -171,16 +213,21 @@ const PlanWithAI = () => {
             const errorData = await response.json().catch(() => ({}));
             lastError = errorData.detail || `HTTP ${response.status}: ${response.statusText}`;
 
-             // If it's 401, token might be invalid
-            if (response.status === 401) {
-              localStorage.removeItem("access_token");
-              localStorage.removeItem("jwt_token");
-              localStorage.removeItem("token");
-              setError("Authentication failed. Please log in again.");
-              navigate("/auth", { state: { from: "/plan-ai" } });
-              return;
-            }
-                      }
+            // Handle 403 specifically for limit reached
+                if (response.status === 403) {
+                    setLimitReached(true);
+                    setError(errorData.detail || "Daily limit reached or subscription expired. Upgrade to premium for unlimited access.");
+                    return;
+                }
+                if (response.status === 401) {
+                    localStorage.removeItem("access_token");
+                    localStorage.removeItem("jwt_token");
+                    localStorage.removeItem("token");
+                    setError("Authentication failed. Please log in again.");
+                    navigate("/auth", { state: { from: "/plan-ai" } });
+                    return;
+                }
+          }
         } catch (fetchError) {
           console.log(`Network error with URL: ${baseUrl}/api/v1/generate-travel-plan`);
           lastError = fetchError.message;
@@ -509,7 +556,7 @@ const PlanWithAI = () => {
               type="button"
               onClick={handleSubmit}
               className="w-full bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 text-white py-4 px-6 rounded-lg hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 transition-all duration-300 font-semibold text-lg shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transform hover:-translate-y-1"
-              disabled={loading || !form.destination || !form.total_budget}
+              disabled={loading || limitReached || !form.destination || !form.total_budget}
             >
               {loading ? (
                 <div className="flex items-center justify-center">
@@ -532,8 +579,31 @@ const PlanWithAI = () => {
         </div>
       </div>
 
-      {/* Error Display */}
-      {error && (
+      {/* Limit Reached Message and Upgrade Button */}
+      {limitReached && (
+        <div className="mt-6 p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded-r-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <svg className="w-5 h-5 text-yellow-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <h3 className="font-semibold text-yellow-800">Limit Reached</h3>
+                <p className="text-yellow-700">Your daily limit reached or subscription expired. Upgrade to premium for unlimited access.</p>
+              </div>
+            </div>
+            <button
+              onClick={handleUpgrade}
+              className="px-4 py-2 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo -600 text-white rounded-lg hover:bg-gradient-to-r hover:from-blue-700 hover:via-purple-700 hover:to-indigo -700 transition-colors text-sm font-medium"
+            >
+              Upgrade to Premium
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Error Display (for other errors) */}
+      {error && !limitReached && (
         <div className="mt-6 p-4 bg-red-50 border-l-4 border-red-400 rounded-r-lg">
           <div className="flex items-center">
             <svg className="w-5 h-5 text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
