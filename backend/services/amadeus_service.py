@@ -46,12 +46,23 @@ def search_flights(origin: str, destination: str, departure_date: str, return_da
 def get_airport_autocomplete(keyword: str):
     """
     Provides airport/city autocomplete suggestions using the Amadeus Airport & City Search API.
+    Prioritizes cities over airports for better user experience.
     """
     try:
         response = amadeus.reference_data.locations.get(
             keyword=keyword,
-            subType=['AIRPORT', 'CITY']
+            subType=['CITY', 'AIRPORT']  # Put CITY first to prioritize cities
         )
+        
+        # Sort results to show cities first, then airports
+        if response.data:
+            # Separate cities and airports
+            cities = [item for item in response.data if item.get('subType') == 'CITY']
+            airports = [item for item in response.data if item.get('subType') == 'AIRPORT']
+            
+            # Return cities first, then airports
+            return cities + airports
+        
         return response.data
     except ResponseError as error:
         print(f"Amadeus API Error: {error}")
