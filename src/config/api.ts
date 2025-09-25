@@ -33,6 +33,9 @@ export interface Airport {
   id: string;
   iataCode: string;
   name: string;
+  subType?: string;
+  detailedName?: string;
+  type?: string;
   // Add other properties as needed
 }
 
