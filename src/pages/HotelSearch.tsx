@@ -91,7 +91,7 @@ const HotelSearch = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 pt-24">
+    <div className="container mx-auto px-4 pt-24 pb-8">
       <h1 className="text-3xl font-bold mb-6">Hotel Price Agent</h1>
       
       <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md mb-8">
