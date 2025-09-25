@@ -43,7 +43,7 @@ def ask_grok(query: str, system_role: str = "You are a helpful travel assistant.
             {"role": "user", "content": query}
         ],
         "temperature": 0.7,
-        "max_tokens": 2000,  # Add max tokens to ensure complete responses
+        "max_tokens": 4000,  # Add max tokens to ensure complete responses
         "stream": False
     }
     

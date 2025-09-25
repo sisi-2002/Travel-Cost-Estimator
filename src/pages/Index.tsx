@@ -14,7 +14,7 @@ const Index = () => {
         <Destinations />
         <Services />
       </main>
-      <Footer />
+      
     </div>
   );
 };
