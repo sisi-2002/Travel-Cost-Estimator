@@ -23,6 +23,10 @@ const HotelSearch = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [searchPerformed, setSearchPerformed] = useState(false);
+  const [compareSelection, setCompareSelection] = useState<string[]>([]);
+  const [isCompareOpen, setIsCompareOpen] = useState(false);
+  const [filters, setFilters] = useState<{ maxPrice?: number }>(() => ({}));
+  const [sortBy, setSortBy] = useState<'price' | 'distance' | ''>('');
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -81,6 +85,8 @@ const HotelSearch = () => {
       setSearchMetadata(response.search_metadata);
       setAiSummary(response.ai_summary || '');
       setPremiumFeatures(response.premium_features);
+      setCompareSelection([]);
+      setIsCompareOpen(false);
     } catch (err: unknown) {
       console.error('Hotel search error:', err);
       const message = err instanceof Error ? err.message : 'An error occurred while searching for hotels';
@@ -257,28 +263,9 @@ const HotelSearch = () => {
 
       {/* AI Summary */}
       {aiSummary && (
-        <div className="bg-green-50 p-4 rounded-lg mb-6">
-          <h3 className="text-lg font-semibold mb-2">🤖 AI Summary</h3>
-          <div className="text-sm whitespace-pre-line leading-relaxed">
-            {aiSummary.split('**').map((part, index) => {
-              if (index % 2 === 1) {
-                // This is a bold section
-                return <strong key={index}>{part}</strong>;
-              } else {
-                // This is regular text
-                return part.split('\n').map((line, lineIndex) => (
-                  <span key={`${index}-${lineIndex}`}>
-                    {line.startsWith('•') ? (
-                      <span className="block ml-4 mt-1">{line}</span>
-                    ) : (
-                      <span>{line}</span>
-                    )}
-                    {lineIndex < part.split('\n').length - 1 && <br />}
-                  </span>
-                ));
-              }
-            })}
-          </div>
+        <div className="bg-green-50 border border-green-200 p-5 rounded-lg mb-6">
+          <h3 className="text-lg font-semibold mb-3">🤖 AI Summary</h3>
+          <AISummary content={aiSummary} />
         </div>
       )}
 
@@ -315,18 +302,122 @@ const HotelSearch = () => {
       {hotels.length > 0 && (
         <div>
           <h2 className="text-2xl font-semibold mb-4">Hotel Results ({hotels.length} found)</h2>
-          <div className="grid gap-4">
-            {hotels.map((hotel, index) => (
-              <HotelCard key={index} hotel={hotel} />
-            ))}
+          {/* Filters & Sorting */}
+          <div className="flex flex-col md:flex-row md:items-center gap-3 mb-3">
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-700">Max price</label>
+              <input
+                type="range"
+                min={0}
+                max={5000}
+                step={50}
+                value={filters.maxPrice ?? 5000}
+                onChange={(e) => setFilters((p) => ({ ...p, maxPrice: Number(e.target.value) }))}
+              />
+              <span className="text-sm text-gray-600 w-16">${(filters.maxPrice ?? 5000)}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-700">Sort</label>
+              <select
+                className="border rounded p-1 text-sm"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+              >
+                <option value="">None</option>
+                <option value="price">Price (low to high)</option>
+                <option value="distance">Distance (near to far)</option>
+              </select>
+            </div>
           </div>
+
+          {(() => {
+            // Prepare filtered and sorted list
+            let list = [...hotels];
+            if (filters.maxPrice != null) {
+              list = list.filter((h) => {
+                const o = h.offers?.[0];
+                const total = o ? Number(o.price.total) : Number.POSITIVE_INFINITY;
+                return total <= (filters.maxPrice as number);
+              });
+            }
+            if (sortBy === 'price') {
+              list.sort((a, b) => {
+                const ap = Number(a.offers?.[0]?.price.total || Number.POSITIVE_INFINITY);
+                const bp = Number(b.offers?.[0]?.price.total || Number.POSITIVE_INFINITY);
+                return ap - bp;
+              });
+            } else if (sortBy === 'distance') {
+              list.sort((a, b) => {
+                const ad = Number((a as any).hotel?.distance?.value ?? Number.POSITIVE_INFINITY);
+                const bd = Number((b as any).hotel?.distance?.value ?? Number.POSITIVE_INFINITY);
+                return ad - bd;
+              });
+            }
+
+            return (
+              <div className="grid gap-4">
+                {list.map((hotel, index) => (
+              <HotelCard
+                key={index}
+                hotel={hotel}
+                selected={compareSelection.includes(hotel.hotel.hotelId)}
+                onToggleCompare={(id: string) => {
+                  setCompareSelection((prev) =>
+                    prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+                  );
+                }}
+              />
+                ))}
+              </div>
+            );
+          })()}
+
+          {compareSelection.length > 0 && (
+            <div className="fixed bottom-4 left-0 right-0 flex justify-center pointer-events-none">
+              <div className="bg-white shadow-lg rounded-full px-4 py-2 flex items-center gap-3 pointer-events-auto">
+                <span className="text-sm text-gray-700">
+                  {compareSelection.length} selected for comparison
+                </span>
+                <button
+                  onClick={() => setIsCompareOpen(true)}
+                  className="bg-blue-600 text-white text-sm px-3 py-1 rounded-full hover:bg-blue-700"
+                >
+                  Compare
+                </button>
+                <button
+                  onClick={() => setCompareSelection([])}
+                  className="text-sm px-3 py-1 rounded-full border hover:bg-gray-50"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+          )}
+
+          {isCompareOpen && (
+            <CompareModal
+              hotels={hotels.filter((h) => compareSelection.includes(h.hotel.hotelId))}
+              onClose={() => setIsCompareOpen(false)}
+              onRemove={(id: string) => setCompareSelection((prev) => prev.filter((x) => x !== id))}
+              requestedAmenities={(searchMetadata?.preferences_applied?.amenities as string[]) || []}
+              requestedRatings={(searchMetadata?.preferences_applied?.ratings as string[]) || []}
+            />
+          )}
         </div>
       )}
     </div>
   );
 };
 
-const HotelCard = ({ hotel }: { hotel: HotelOffer }) => {
+const HotelCard = ({
+  hotel,
+  selected,
+  onToggleCompare,
+}: {
+  hotel: HotelOffer;
+  selected?: boolean;
+  onToggleCompare?: (id: string) => void;
+}) => {
   const bestOffer = hotel.offers?.[0];
   const [showBreakdown, setShowBreakdown] = useState(false);
   
@@ -422,6 +513,14 @@ const HotelCard = ({ hotel }: { hotel: HotelOffer }) => {
         <button className="bg-gray-500 text-white px-4 py-1 rounded text-sm hover:bg-gray-600">
           Details
         </button>
+        {onToggleCompare && (
+          <button
+            onClick={() => onToggleCompare(hotel.hotel.hotelId)}
+            className={`px-4 py-1 rounded text-sm border ${selected ? 'bg-blue-50 border-blue-600 text-blue-700' : 'hover:bg-gray-50'}`}
+          >
+            {selected ? 'Added to Compare' : 'Compare'}
+          </button>
+        )}
       </div>
       
       <div className="mt-2 text-xs text-gray-400">
@@ -432,3 +531,169 @@ const HotelCard = ({ hotel }: { hotel: HotelOffer }) => {
 };
 
 export default HotelSearch;
+
+const AISummary = ({ content }: { content: string }) => {
+  // Normalize bullets: treat lines starting with "- " or "* " as bullets
+  const lines = content.split('\n').map((l) => l.trimEnd());
+  const blocks: Array<{ type: 'heading' | 'bullet' | 'text'; text: string }> = [];
+
+  lines.forEach((line) => {
+    if (!line) {
+      blocks.push({ type: 'text', text: '' });
+      return;
+    }
+    if (line.startsWith('**') && line.endsWith('**')) {
+      blocks.push({ type: 'heading', text: line.replace(/\*\*/g, '') });
+    } else if (line.startsWith('•') || line.startsWith('- ') || line.startsWith('* ')) {
+      blocks.push({ type: 'bullet', text: line.replace(/^([•*-]\s?)/, '') });
+    } else {
+      blocks.push({ type: 'text', text: line });
+    }
+  });
+
+  return (
+    <div className="text-sm leading-relaxed">
+      {blocks.map((b, i) => {
+        if (b.type === 'heading') {
+          return (
+            <div key={i} className="mt-4 mb-2 font-semibold text-gray-900">
+              {b.text}
+            </div>
+          );
+        }
+        if (b.type === 'bullet') {
+          return (
+            <div key={i} className="flex items-start gap-2 pl-4">
+              <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-gray-700" />
+              <span>{b.text}</span>
+            </div>
+          );
+        }
+        return <p key={i} className="mb-1">{b.text || <span>&nbsp;</span>}</p>;
+      })}
+    </div>
+  );
+};
+
+const CompareModal = ({
+  hotels,
+  onClose,
+  onRemove,
+  requestedAmenities,
+  requestedRatings,
+}: {
+  hotels: HotelOffer[];
+  onClose: () => void;
+  onRemove: (id: string) => void;
+  requestedAmenities?: string[];
+  requestedRatings?: string[];
+}) => {
+  const hasAnyRating = hotels.some((h) => (h as any).hotel?.rating);
+  const hasAnyAmenities = hotels.some((h) => Array.isArray((h as any).hotel?.amenities) && (h as any).hotel?.amenities.length > 0);
+  const hasAnyCancellation = hotels.some((h) => h.offers?.[0]?.policies?.cancellation?.type);
+  
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-end md:items-center justify-center z-50">
+      <div className="bg-white w-full md:w-5/6 lg:w-3/4 max-h-[80vh] rounded-t-2xl md:rounded-2xl overflow-hidden shadow-xl">
+        <div className="flex items-center justify-between px-4 py-3 border-b">
+          <h3 className="text-lg font-semibold">Compare Hotels</h3>
+          <button onClick={onClose} className="text-sm px-3 py-1 rounded border hover:bg-gray-50">Close</button>
+        </div>
+        <div className="overflow-auto">
+          <div className="min-w-[720px] grid" style={{ gridTemplateColumns: `200px repeat(${hotels.length}, minmax(220px, 1fr))` }}>
+            <div className="bg-gray-50 p-3 text-sm font-medium sticky left-0">Attribute</div>
+            {hotels.map((h) => (
+              <div key={h.hotel.hotelId} className="bg-gray-50 p-3 flex items-center justify-between gap-2">
+                <div className="text-sm font-medium truncate">{h.hotel.name}</div>
+                <button onClick={() => onRemove(h.hotel.hotelId)} className="text-xs px-2 py-1 rounded border hover:bg-gray-100">Remove</button>
+              </div>
+            ))}
+
+            {/* Price */}
+            <div className="p-3 text-sm font-medium sticky left-0 bg-white">Price (total)</div>
+            {hotels.map((h) => {
+              const o = h.offers?.[0];
+              return (
+                <div key={h.hotel.hotelId + '-price'} className="p-3 text-sm">
+                  {o ? (
+                    <div className="font-semibold">{o.price.total} {o.price.currency}</div>
+                  ) : (
+                    <span className="text-gray-500">—</span>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* Per room/night */}
+            <div className="p-3 text-sm font-medium sticky left-0 bg-white">Per room/night</div>
+            {hotels.map((h) => {
+              const b = h.offers?.[0]?.price_breakdown;
+              return (
+                <div key={h.hotel.hotelId + '-prpn'} className="p-3 text-sm">
+                  {b ? `${b.per_room_per_night.toFixed(2)} ${b.currency}` : '—'}
+                </div>
+              );
+            })}
+
+            {/* Distance */}
+            <div className="p-3 text-sm font-medium sticky left-0 bg-white">Distance</div>
+            {hotels.map((h) => (
+              <div key={h.hotel.hotelId + '-dist'} className="p-3 text-sm">
+                {h.hotel.distance ? `${h.hotel.distance.value} ${h.hotel.distance.unit}` : '—'}
+              </div>
+            ))}
+
+            {/* Rating */}
+            {hasAnyRating && (
+              <>
+                <div className="p-3 text-sm font-medium sticky left-0 bg-white">Rating</div>
+                {hotels.map((h) => (
+                  <div key={h.hotel.hotelId + '-rating'} className="p-3 text-sm">
+                    {h.hotel.rating || '—'}
+                  </div>
+                ))}
+              </>
+            )}
+
+            {/* Amenities (top 5) */}
+            {hasAnyAmenities && (
+              <>
+                <div className="p-3 text-sm font-medium sticky left-0 bg-white">Amenities</div>
+                {hotels.map((h) => (
+                  <div key={h.hotel.hotelId + '-amen'} className="p-3 text-xs">
+                    {Array.isArray((h as any).hotel?.amenities) && (h as any).hotel?.amenities.length > 0
+                      ? (h as any).hotel.amenities.slice(0, 5).join(', ')
+                      : '—'}
+                  </div>
+                ))}
+              </>
+            )}
+
+            {/* Chain */}
+            <div className="p-3 text-sm font-medium sticky left-0 bg-white">Chain</div>
+            {hotels.map((h) => (
+              <div key={h.hotel.hotelId + '-chain'} className="p-3 text-sm">
+                {h.hotel.chainCode || '—'}
+              </div>
+            ))}
+
+            {/* Cancellation */}
+            {hasAnyCancellation && (
+              <>
+                <div className="p-3 text-sm font-medium sticky left-0 bg-white">Cancellation</div>
+                {hotels.map((h) => {
+                  const c = h.offers?.[0]?.policies?.cancellation?.type;
+                  return (
+                    <div key={h.hotel.hotelId + '-cancel'} className="p-3 text-sm">
+                      {c || '—'}
+                    </div>
+                  );
+                })}
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
