@@ -36,7 +36,13 @@ export interface Airport {
   subType?: string;
   detailedName?: string;
   type?: string;
-  // Add other properties as needed
+}
+
+export interface HotelSuggestion {
+  value: string;
+  type?: string;
+  location?: string;
+  property_token?: string;
 }
 
 export interface FlightOffer {
@@ -204,47 +210,103 @@ export const searchHotels = async (
   checkIn: string,
   checkOut: string,
   adults: number = 1,
-  roomQuantity: number = 1,
+  _roomQuantity: number = 1,
   maxHotels: number = 10,
   currency: string = "USD",
-  radius: number = 5,
   preferences?: string,
-  includeSummary: boolean = false
+  includeSummary: boolean = false,
+  opts?: {
+    sort_by?: 3 | 8 | 13;
+    min_price?: number;
+    max_price?: number;
+    rating?: 7 | 8 | 9;
+    hotel_class?: string;
+    free_cancellation?: boolean;
+    eco_certified?: boolean;
+    vacation_rentals?: boolean;
+    next_page_token?: string;
+    children?: number;
+    children_ages?: string; // e.g. "5,8"
+  }
 ): Promise<{
   hotels: HotelOffer[];
   search_metadata?: any;
   ai_summary?: string;
   premium_features?: any;
+  serpapi_pagination?: { next_page_token?: string };
 }> => {
   const params = new URLSearchParams({
     destination,
     check_in: checkIn,
     check_out: checkOut,
     adults: String(adults),
-    room_quantity: String(roomQuantity),
     max_hotels: String(maxHotels),
     currency,
-    radius: String(radius),
     include_summary: String(includeSummary)
   });
   
   if (preferences) {
     params.append('preferences', preferences);
   }
+  if (opts?.children != null) params.append('children', String(opts.children));
+  if (opts?.children_ages) params.append('children_ages', opts.children_ages);
+  if (opts?.sort_by) params.append('sort_by', String(opts.sort_by));
+  if (opts?.min_price != null) params.append('min_price', String(opts.min_price));
+  if (opts?.max_price != null) params.append('max_price', String(opts.max_price));
+  if (opts?.rating) params.append('rating', String(opts.rating));
+  if (opts?.hotel_class) params.append('hotel_class', opts.hotel_class);
+  if (opts?.free_cancellation != null) params.append('free_cancellation', String(opts.free_cancellation));
+  if (opts?.eco_certified != null) params.append('eco_certified', String(opts.eco_certified));
+  if (opts?.vacation_rentals != null) params.append('vacation_rentals', String(opts.vacation_rentals));
+  if (opts?.next_page_token) params.append('next_page_token', opts.next_page_token);
   
-  const res = await fetch(`${buildApiUrl(API_CONFIG.ENDPOINTS.HOTELS.SEARCH)}?${params}`, {
+  const endpoint = `${buildApiUrl(API_CONFIG.ENDPOINTS.HOTELS.SEARCH)}?${params}`;
+  const res = await fetch(endpoint, {
     method: 'GET',
     credentials: 'include',
   });
   
   if (!res.ok) {
-    throw new Error(`Failed to search hotels: ${res.statusText}`);
+    let detail = res.statusText;
+    try {
+      const body = await res.json();
+      if (body?.detail) detail = body.detail;
+    } catch {}
+    throw new Error(`Failed to search hotels: ${detail}`);
   }
   
   return res.json();
 };
 
-export const getHotelLocations = async (keyword: string): Promise<Airport[]> => {
+export const getHotelDetails = async (
+  property_token: string,
+  destination: string,
+  checkIn: string,
+  checkOut: string,
+  adults: number = 2,
+  currency: string = 'USD'
+) => {
+  const params = new URLSearchParams({
+    property_token,
+    destination,
+    check_in: checkIn,
+    check_out: checkOut,
+    adults: String(adults),
+    currency,
+  });
+  const res = await fetch(`${buildApiUrl(API_CONFIG.ENDPOINTS.HOTELS.SEARCH).replace('/search','/details')}?${params}`, {
+    method: 'GET',
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    let detail = res.statusText;
+    try { const body = await res.json(); if (body?.detail) detail = body.detail; } catch {}
+    throw new Error(`Failed to get hotel details: ${detail}`);
+  }
+  return res.json();
+};
+
+export const getHotelLocations = async (keyword: string): Promise<HotelSuggestion[]> => {
   const res = await fetch(`${buildApiUrl(API_CONFIG.ENDPOINTS.HOTELS.LOCATIONS)}?keyword=${encodeURIComponent(keyword)}`, {
     method: 'GET',
     credentials: 'include',

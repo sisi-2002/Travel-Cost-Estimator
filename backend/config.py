@@ -24,6 +24,13 @@ class Settings(BaseSettings):
     amadeus_hostname: str = "test.api.amadeus.com"
 
 
+    # SerpApi Configuration
+    serpapi_api_key: str | None = None
+    serpapi_gl: str = "us"
+    serpapi_hl: str = "en"
+    serpapi_currency: str = "USD"
+
+
     # Grok API Configuration
     grok_api_key: str
     grok_api_url: str

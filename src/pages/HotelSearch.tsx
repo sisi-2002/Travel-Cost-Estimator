@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react';
-import { searchHotels, getHotelLocations } from '../config/api';
-import { HotelOffer, Airport } from '../types/index';
+import { searchHotels, getHotelDetails } from '../config/api';
+import { HotelOffer } from '../types/index';
 
 const HotelSearch = () => {
   const [formData, setFormData] = useState({
@@ -10,12 +11,10 @@ const HotelSearch = () => {
     adults: 1,
     roomQuantity: 1,
     currency: 'USD',
-    radius: 5,
     preferences: '',
     includeSummary: false,
   });
-  const [suggestions, setSuggestions] = useState<Airport[]>([]);
-  const [activeField, setActiveField] = useState<string | null>(null);
+  
   const [hotels, setHotels] = useState<HotelOffer[]>([]);
   const [searchMetadata, setSearchMetadata] = useState<any>(null);
   const [aiSummary, setAiSummary] = useState<string>('');
@@ -27,35 +26,21 @@ const HotelSearch = () => {
   const [isCompareOpen, setIsCompareOpen] = useState(false);
   const [filters, setFilters] = useState<{ maxPrice?: number }>(() => ({}));
   const [sortBy, setSortBy] = useState<'price' | 'distance' | ''>('');
+  const [serpSortBy, setSerpSortBy] = useState<3 | 8 | 13 | ''>('');
+  const [rating, setRating] = useState<7 | 8 | 9 | ''>('');
+  const [hotelClass, setHotelClass] = useState<string>('');
+  const [freeCancel, setFreeCancel] = useState(false);
+  const [eco, setEco] = useState(false);
+  const [vacationRentals, setVacationRentals] = useState(false);
+  const [children, setChildren] = useState<number>(0);
+  const [childrenAges, setChildrenAges] = useState<string>('');
+  const [nextPageToken, setNextPageToken] = useState<string | undefined>(undefined);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    
-    // Fetch location suggestions for destination field
-    if (name === 'destination' && value.length > 2) {
-      setActiveField(name);
-      fetchLocationSuggestions(value);
-    } else {
-      setSuggestions([]);
-    }
   };
-
-  const fetchLocationSuggestions = async (keyword: string) => {
-    try {
-      const data = await getHotelLocations(keyword);
-      setSuggestions(data);
-    } catch (err) {
-      console.error('Error fetching location suggestions:', err);
-      setSuggestions([]);
-    }
-  };
-
-  const selectSuggestion = (suggestion: Airport, field: string) => {
-    setFormData(prev => ({ ...prev, [field]: suggestion.iataCode }));
-    setSuggestions([]);
-    setActiveField(null);
-  };
+  // Autocomplete removed
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,19 +57,32 @@ const HotelSearch = () => {
         formData.destination,
         formData.checkIn,
         formData.checkOut,
-        formData.adults,
-        formData.roomQuantity,
+        Number(formData.adults),
+        Number(formData.roomQuantity),
         10, // max hotels
         formData.currency,
-        formData.radius,
         formData.preferences || undefined,
-        formData.includeSummary
+        Boolean(formData.includeSummary),
+        {
+          sort_by: serpSortBy || undefined,
+          min_price: filters.maxPrice ? undefined : undefined,
+          // we only use maxPrice locally for now
+          rating: rating || undefined,
+          hotel_class: hotelClass || undefined,
+          free_cancellation: freeCancel || undefined,
+          eco_certified: eco || undefined,
+          vacation_rentals: vacationRentals || undefined,
+          children: children || undefined,
+          children_ages: childrenAges || undefined,
+          next_page_token: nextPageToken,
+        }
       );
       console.log('Hotel search results:', response);
       setHotels(response.hotels);
       setSearchMetadata(response.search_metadata);
       setAiSummary(response.ai_summary || '');
       setPremiumFeatures(response.premium_features);
+      setNextPageToken(response.serpapi_pagination?.next_page_token);
       setCompareSelection([]);
       setIsCompareOpen(false);
     } catch (err: unknown) {
@@ -101,7 +99,7 @@ const HotelSearch = () => {
       <h1 className="text-3xl font-bold mb-6">Hotel Price Agent</h1>
       
       <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md mb-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4 mb-4">
           <div className="relative">
             <label className="block text-sm font-medium mb-1">Destination</label>
             <input
@@ -113,19 +111,7 @@ const HotelSearch = () => {
               placeholder="City or IATA code"
               required
             />
-            {activeField === 'destination' && suggestions.length > 0 && (
-              <div className="absolute z-10 w-full bg-white border rounded shadow-lg">
-                {suggestions.map((location) => (
-                  <div
-                    key={location.id}
-                    className="p-2 hover:bg-gray-100 cursor-pointer"
-                    onClick={() => selectSuggestion(location, 'destination')}
-                  >
-                    {location.name} ({location.iataCode})
-                  </div>
-                ))}
-              </div>
-            )}
+            {/* Autocomplete removed */}
           </div>
           
           <div>
@@ -164,7 +150,25 @@ const HotelSearch = () => {
               className="w-full p-2 border rounded"
             />
           </div>
-          
+          <div>
+            <label className="block text-sm font-medium mb-1">Children</label>
+            <input
+              type="number"
+              min={0}
+              max={6}
+              className="w-full p-2 border rounded"
+              value={children}
+              onChange={(e)=>setChildren(Number(e.target.value))}
+            />
+            <input
+              type="text"
+              className="w-full p-2 border rounded mt-1"
+              placeholder="Children ages (e.g., 5,8)"
+              value={childrenAges}
+              onChange={(e)=>setChildrenAges(e.target.value)}
+            />
+          </div>
+
           <div>
             <label className="block text-sm font-medium mb-1">Rooms</label>
             <input
@@ -177,22 +181,29 @@ const HotelSearch = () => {
               className="w-full p-2 border rounded"
             />
           </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Currency</label>
+            <select
+              name="currency"
+              value={formData.currency}
+              onChange={handleInputChange}
+              className="w-full p-2 border rounded"
+            >
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+              <option value="GBP">GBP</option>
+              <option value="LKR">LKR</option>
+              <option value="INR">INR</option>
+              <option value="AUD">AUD</option>
+              <option value="CAD">CAD</option>
+              <option value="MYR">MYR</option>
+            </select>
+          </div>
         </div>
         
         {/* Enhanced Features Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4 mt-4 p-4 bg-gray-50 rounded">
-          <div>
-            <label className="block text-sm font-medium mb-1">Search Radius (km)</label>
-            <input
-              type="number"
-              name="radius"
-              value={formData.radius}
-              onChange={handleInputChange}
-              min="1"
-              max="50"
-              className="w-full p-2 border rounded"
-            />
-          </div>
           
           <div>
             <label className="block text-sm font-medium mb-1">Preferences (NLP)</label>
@@ -216,6 +227,43 @@ const HotelSearch = () => {
               className="mr-2"
             />
             <label className="text-sm font-medium">Include AI Summary</label>
+          </div>
+        </div>
+
+        {/* SerpApi Filters */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4 p-4 bg-gray-50 rounded">
+          <div>
+            <label className="block text-sm font-medium mb-1">Sort (SerpApi)</label>
+            <select className="w-full p-2 border rounded" value={serpSortBy as any} onChange={(e)=>setSerpSortBy((e.target.value as any) || '')}>
+              <option value="">Relevance (default)</option>
+              <option value={3}>Lowest price</option>
+              <option value={8}>Highest rating</option>
+              <option value={13}>Most reviewed</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Rating</label>
+            <select className="w-full p-2 border rounded" value={rating as any} onChange={(e)=>setRating((e.target.value as any) || '')}>
+              <option value="">Any</option>
+              <option value={7}>3.5+ ⭐</option>
+              <option value={8}>4.0+ ⭐</option>
+              <option value={9}>4.5+ ⭐</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Hotel class</label>
+            <select className="w-full p-2 border rounded" value={hotelClass} onChange={(e)=>setHotelClass(e.target.value)}>
+              <option value="">Any</option>
+              <option value="2">2-star</option>
+              <option value="3">3-star</option>
+              <option value="4">4-star</option>
+              <option value="5">5-star</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={freeCancel} onChange={(e)=>setFreeCancel(e.target.checked)} /> Free cancellation</label>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={eco} onChange={(e)=>setEco(e.target.checked)} /> Eco-certified</label>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={vacationRentals} onChange={(e)=>setVacationRentals(e.target.checked)} /> Vacation rentals</label>
           </div>
         </div>
         
@@ -245,7 +293,6 @@ const HotelSearch = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <p className="text-sm"><strong>Destination:</strong> {searchMetadata.destination_display || searchMetadata.destination}</p>
-              <p className="text-sm"><strong>Search Radius:</strong> {searchMetadata.search_radius_km} km</p>
               <p className="text-sm"><strong>Results Found:</strong> {searchMetadata.total_results}</p>
             </div>
             <div>
@@ -330,6 +377,32 @@ const HotelSearch = () => {
             </div>
           </div>
 
+          {nextPageToken && (
+            <div className="flex justify-center mt-4">
+              <button
+                className="px-4 py-2 border rounded hover:bg-gray-50"
+                onClick={async () => {
+                  try {
+                    const res = await searchHotels(
+                      formData.destination,
+                      formData.checkIn,
+                      formData.checkOut,
+                      Number(formData.adults),
+                      Number(formData.roomQuantity),
+                      10,
+                      formData.currency,
+                      formData.preferences || undefined,
+                      Boolean(formData.includeSummary),
+                      { next_page_token: nextPageToken }
+                    );
+                    setHotels((prev)=>[...prev, ...res.hotels]);
+                    setNextPageToken(res.serpapi_pagination?.next_page_token);
+                  } catch (e) { console.error(e); }
+                }}
+              >Load more</button>
+            </div>
+          )}
+
           {(() => {
             // Prepare filtered and sorted list
             let list = [...hotels];
@@ -409,6 +482,8 @@ const HotelSearch = () => {
   );
 };
 
+export default HotelSearch;
+
 const HotelCard = ({
   hotel,
   selected,
@@ -423,37 +498,66 @@ const HotelCard = ({
   
   return (
     <div className="bg-white p-4 rounded-lg shadow-md">
-      <div className="flex justify-between items-start mb-2">
-        <div>
-          <h3 className="text-lg font-semibold">{hotel.hotel.name}</h3>
-          <p className="text-sm text-gray-600">
-            {hotel.hotel.cityCode} • {hotel.hotel.chainCode}
-          </p>
-          {hotel.hotel.distance && (
-            <p className="text-xs text-gray-500">
-              {hotel.hotel.distance.value} {hotel.hotel.distance.unit} from city center
-            </p>
-          )}
-        </div>
-        {bestOffer && (
-          <div className="text-right">
-            <span className="text-xl font-bold">
-              {bestOffer.price.total} {bestOffer.price.currency}
-            </span>
-            <p className="text-xs text-gray-500">
-              {bestOffer.price_breakdown ? 
-                `Total for ${bestOffer.price_breakdown.nights} night${bestOffer.price_breakdown.nights > 1 ? 's' : ''}` : 
-                'per night'
-              }
-            </p>
-          </div>
+      <div className="flex gap-4">
+        {/* Thumbnail */}
+        { (hotel as any).hotel?.thumbnail ? (
+          <img src={(hotel as any).hotel.thumbnail} alt={hotel.hotel.name} className="w-32 h-24 object-cover rounded" />
+        ) : (
+          <div className="w-32 h-24 bg-gray-200 rounded" />
         )}
-      </div>
+
+        <div className="flex-1">
+          <div className="flex justify-between items-start mb-2">
+            <div>
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                {hotel.hotel.name}
+                {((hotel as any).serpapi?.overall_rating || (hotel as any).serpapi?.reviews) && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-50 border border-yellow-200 flex items-center gap-1">
+                    <span>★</span>
+                    <span>{(hotel as any).serpapi?.overall_rating?.toFixed ? (hotel as any).serpapi.overall_rating.toFixed(1) : (hotel as any).serpapi?.overall_rating || ''}</span>
+                    {(hotel as any).serpapi?.reviews ? <span className="text-gray-500">({(hotel as any).serpapi.reviews})</span> : null}
+                  </span>
+                )}
+              </h3>
+              <p className="text-sm text-gray-600">
+                {hotel.hotel.cityCode} • {hotel.hotel.chainCode}
+              </p>
+              {hotel.hotel.distance && (
+                <p className="text-xs text-gray-500">
+                  {hotel.hotel.distance.value} {hotel.hotel.distance.unit} from city center
+                </p>
+              )}
+            </div>
+            {bestOffer && (
+              <div className="text-right">
+                <div className="text-right">
+                  <div className="text-xs text-gray-500">Total</div>
+                  <span className="text-xl font-bold">
+                    {bestOffer.price.total} {bestOffer.price.currency}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500">
+                  {(() => {
+                    const ci = bestOffer.checkInDate ? new Date(bestOffer.checkInDate) : null;
+                    const co = bestOffer.checkOutDate ? new Date(bestOffer.checkOutDate) : null;
+                    const nights = ci && co ? Math.max(1, Math.round((+co - +ci) / (1000*60*60*24))) : undefined;
+                    const total = Number((bestOffer as any)?.price?.total);
+                    const rooms = (bestOffer as any)?.rooms || 1;
+                    if (nights && isFinite(total)) {
+                      const perRoomPerNight = total / (rooms * nights);
+                      return `${perRoomPerNight.toFixed(0)} ${bestOffer.price.currency} per room/night`;
+                    }
+                    return 'per night';
+                  })()}
+                </p>
+              </div>
+            )}
+          </div>
       
       {bestOffer && (
         <div className="mt-3 space-y-1">
           <div className="text-sm">
-            <span className="font-medium">Room:</span> {bestOffer.room.type}
+            <span className="font-medium">Room:</span> {(bestOffer as any)?.room?.type ?? 'Room'}
           </div>
           <div className="text-sm">
             <span className="font-medium">Dates:</span> {bestOffer.checkInDate} to {bestOffer.checkOutDate}
@@ -466,8 +570,34 @@ const HotelCard = ({
         </div>
       )}
 
+      {/* Amenities badges */}
+      {Array.isArray((hotel as any).hotel?.amenities) && (hotel as any).hotel.amenities.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {(hotel as any).hotel.amenities.slice(0,6).map((a: string, i: number) => (
+            <span key={i} className="text-xs px-2 py-0.5 rounded-full border bg-gray-50">{a}</span>
+          ))}
+        </div>
+      )}
+
       {/* Price Breakdown Section */}
-      {bestOffer?.price_breakdown && (
+      {(() => {
+        const ci = bestOffer?.checkInDate ? new Date(bestOffer.checkInDate) : null;
+        const co = bestOffer?.checkOutDate ? new Date(bestOffer.checkOutDate) : null;
+        const nights = ci && co ? Math.max(1, Math.round((+co - +ci) / (1000*60*60*24))) : undefined;
+        const total = Number((bestOffer as any)?.price?.total);
+        const rooms = (bestOffer as any)?.rooms || 1;
+        if (!bestOffer?.price_breakdown && nights && isFinite(total)) {
+          const perRoomPerNight = total / (rooms * nights);
+          return (
+            <div className="mt-3 border-t pt-3 text-xs text-gray-700">
+              <div className="flex justify-between"><span>Rooms</span><span className="font-medium">{rooms}</span></div>
+              <div className="flex justify-between"><span>Nights</span><span className="font-medium">{nights}</span></div>
+              <div className="flex justify-between"><span>Per room/night</span><span className="font-medium">{perRoomPerNight.toFixed(2)} {bestOffer.price.currency}</span></div>
+              <div className="flex justify-between border-t pt-2 mt-2 font-semibold"><span>Total</span><span>{total.toFixed(2)} {bestOffer.price.currency}</span></div>
+            </div>
+          );
+        }
+        return bestOffer?.price_breakdown ? (
         <div className="mt-3 border-t pt-3">
           <button
             onClick={() => setShowBreakdown(!showBreakdown)}
@@ -504,13 +634,27 @@ const HotelCard = ({
             </div>
           )}
         </div>
-      )}
+        ) : null;
+      })()}
       
       <div className="mt-3 flex gap-2">
         <button className="bg-green-600 text-white px-4 py-1 rounded text-sm hover:bg-green-700">
           Select
         </button>
-        <button className="bg-gray-500 text-white px-4 py-1 rounded text-sm hover:bg-gray-600">
+        <button className="bg-gray-500 text-white px-4 py-1 rounded text-sm hover:bg-gray-600" onClick={async ()=>{
+          try {
+            const details = await getHotelDetails(
+              hotel.hotel.hotelId,
+              (typeof window !== 'undefined' ? (document.querySelector('input[name="destination"]') as HTMLInputElement)?.value : '') || '',
+              bestOffer?.checkInDate || '',
+              bestOffer?.checkOutDate || '',
+              (bestOffer as any)?.guests || 2,
+              bestOffer?.price?.currency || 'USD'
+            );
+            console.log('Details', details);
+            alert(`Address: ${details.address || 'N/A'}\nPhone: ${details.phone || 'N/A'}`);
+          } catch(e) { console.error(e); }
+        }}>
           Details
         </button>
         {onToggleCompare && (
@@ -523,14 +667,15 @@ const HotelCard = ({
         )}
       </div>
       
-      <div className="mt-2 text-xs text-gray-400">
-        Hotel ID: {hotel.hotel.hotelId}
+      <div className="mt-2 text-xs text-gray-400">Hotel ID: {hotel.hotel.hotelId}</div>
+      {/* close flex-1 and row */}
+      </div>
       </div>
     </div>
   );
 };
 
-export default HotelSearch;
+
 
 const AISummary = ({ content }: { content: string }) => {
   // Normalize bullets: treat lines starting with "- " or "* " as bullets
@@ -649,7 +794,7 @@ const CompareModal = ({
                 <div className="p-3 text-sm font-medium sticky left-0 bg-white">Rating</div>
                 {hotels.map((h) => (
                   <div key={h.hotel.hotelId + '-rating'} className="p-3 text-sm">
-                    {h.hotel.rating || '—'}
+                    {(h as any).serpapi?.overall_rating ?? '—'}
                   </div>
                 ))}
               </>
