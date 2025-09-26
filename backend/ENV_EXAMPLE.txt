@@ -7,4 +7,8 @@ PORT=8005
 DEBUG=true
 
 
+# SerpApi
+SERPAPI_API_KEY=your_serpapi_api_key
+
+
 

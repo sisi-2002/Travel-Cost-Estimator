@@ -36,10 +36,11 @@ class HotelSecurityValidator:
         # Valid date format
         self.date_pattern = r'^\d{4}-\d{2}-\d{2}$'
         
-        # Valid currency codes
+        # Valid currency codes (broad ISO set incl. LKR). We keep a permissive list
+        # to allow backend conversion for unsupported-by-Google currencies.
         self.valid_currencies = {
-            'USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'CNY', 'SEK', 'NZD',
-            'MXN', 'SGD', 'HKD', 'NOK', 'TRY', 'RUB', 'ZAR', 'BRL', 'INR', 'KRW'
+            'USD','EUR','GBP','JPY','CAD','AUD','CHF','CNY','SEK','NZD','MXN','SGD','HKD','NOK','TRY','RUB','ZAR','BRL','INR','KRW',
+            'LKR','MYR','AED','SAR','IDR','THB','PHP','BDT','PKR','EGP','ILS','PLN','CZK','HUF','DKK','RON','BGN','CLP','COP','ARS','PEN','UAH'
         }
         
         # Valid Amadeus amenities
