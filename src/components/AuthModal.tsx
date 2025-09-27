@@ -97,7 +97,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle className="text-center text-2xl font-bold">
-            Welcome to TripCraft
+            Welcome to Treval Craft
           </DialogTitle>
         </DialogHeader>
         
@@ -116,7 +116,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
                   <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="login-email"
-                    type="email"
+                     type="email"
                     placeholder="Enter your email"
                     value={loginData.email}
                     onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}

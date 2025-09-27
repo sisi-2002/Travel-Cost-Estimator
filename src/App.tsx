@@ -7,9 +7,14 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Dashboard from "./pages/Dashboard";
 import FlightSearch from "./pages/FlightSearch";
+import HotelSearch from "./pages/HotelSearch";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
-
+import PlanWithAI from "./pages/PlanWithAI";
+import ProtectedRoute from "./components/ui/ProtectedRoute";
+import Authenticate from './components/AuthModal';
+import Success from './components/success'
+import CancelPage from './components/CancelPage';
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -22,9 +27,13 @@ const App = () => (
           <Navbar />
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/auth" element={<Authenticate />} />
+            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/flights" element={<FlightSearch />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="/hotels" element={<HotelSearch />} />
+            <Route path="/plan-ai" element={<ProtectedRoute><PlanWithAI /></ProtectedRoute>} />
+            <Route path="/success" element={<Success />} />
+            <Route path="/cancel" element={<CancelPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Footer />

@@ -13,10 +13,12 @@ const Navbar = () => {
 
   const navigation = [
     { name: "Home", href: "#home" },
-    { name: "Flight Search", href: "/flights" }, // ✅ Replaced Destinations
+    { name: "Flight Search", href: "/flights" },
+    { name: "Hotel Search", href: "/hotels" },
     { name: "Services", href: "#services" },
     { name: "About", href: "#about" },
     { name: "Contact", href: "#contact" },
+    { name: "Plan with AI ", href: "/plan-ai" }, // <-- Added this line
     ...(isAuthenticated ? [{ name: "Dashboard", href: "/dashboard" }] : []),
   ];
 
