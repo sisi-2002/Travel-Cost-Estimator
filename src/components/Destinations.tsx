@@ -53,7 +53,7 @@ const Destinations = () => {
             <span className="bg-gradient-ocean bg-clip-text text-transparent"> Destinations</span>
           </h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Explore our handpicked destinations that offer unforgettable experiences and breathtaking memories.
+            Discover amazing destinations with accurate cost estimates. Get real-time pricing for flights, hotels, and activities.
           </p>
         </div>
 

@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 import { 
   Plane, 
   Hotel, 
@@ -14,39 +15,45 @@ import {
 const services = [
   {
     icon: Plane,
-    title: "Flight Booking",
-    description: "Find the best flight deals with our extensive airline partnerships and exclusive offers.",
-    features: ["Best Price Guarantee", "Flexible Dates", "24/7 Support"]
+    title: "Flight Cost Estimation",
+    description: "Get accurate flight cost estimates with real-time pricing from multiple airlines and booking platforms.",
+    features: ["Real-time Pricing", "Price Alerts", "Best Deal Finder"],
+    link: "/flights"
   },
   {
     icon: Hotel,
-    title: "Hotel Reservations",
-    description: "Book from luxury resorts to boutique hotels, all carefully selected for quality and comfort.",
-    features: ["Handpicked Properties", "Free Cancellation", "Member Discounts"]
+    title: "Hotel Cost Analysis",
+    description: "Compare hotel prices across different platforms and get accurate cost estimates for your stay.",
+    features: ["Price Comparison", "Location Analysis", "Amenity Costs"],
+    link: "/hotels"
   },
   {
-    icon: Car,
-    title: "Car Rentals",
-    description: "Reliable car rental services with premium vehicles and comprehensive insurance coverage.",
-    features: ["Premium Vehicles", "Full Insurance", "GPS Navigation"]
+    icon: Globe,
+    title: "AI Travel Planning",
+    description: "Let our AI analyze your preferences and create personalized itineraries with accurate cost breakdowns.",
+    features: ["Smart Recommendations", "Budget Optimization", "Personalized Itineraries"],
+    link: "/plan-ai"
   },
   {
-    icon: Camera,
-    title: "Guided Tours",
-    description: "Expertly crafted tours with local guides to discover hidden gems and cultural experiences.",
-    features: ["Local Experts", "Small Groups", "Cultural Immersion"]
+    icon: Clock,
+    title: "Cost Tracking",
+    description: "Track your travel expenses in real-time and get alerts when prices change for your planned trip.",
+    features: ["Real-time Tracking", "Price Alerts", "Budget Management"],
+    link: "/dashboard"
   },
   {
     icon: Shield,
     title: "Travel Insurance",
-    description: "Comprehensive travel protection to ensure peace of mind throughout your journey.",
-    features: ["Medical Coverage", "Trip Cancellation", "24/7 Assistance"]
+    description: "Get comprehensive travel protection with accurate cost estimates for different coverage levels.",
+    features: ["Coverage Analysis", "Cost Comparison", "Risk Assessment"],
+    link: "/contact"
   },
   {
     icon: HeartHandshake,
-    title: "Concierge Service",
-    description: "Personal travel concierge to handle all details and provide exclusive access to experiences.",
-    features: ["Personal Assistant", "VIP Access", "Custom Itineraries"]
+    title: "Budget Planning",
+    description: "Create detailed travel budgets with accurate cost estimates for all aspects of your trip.",
+    features: ["Budget Templates", "Cost Breakdowns", "Savings Tips"],
+    link: "/dashboard"
   }
 ];
 
@@ -63,7 +70,7 @@ const Services = () => {
             <span className="bg-gradient-sunset bg-clip-text text-transparent"> Services</span>
           </h2>
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-            From flight bookings to personalized concierge services, we handle every aspect of your travel to ensure a seamless and memorable experience.
+            Get accurate cost estimates and find the best deals with our AI-powered travel planning tools. From flights to hotels, we help you plan and budget your perfect trip.
           </p>
         </div>
 
@@ -93,9 +100,11 @@ const Services = () => {
                       </li>
                     ))}
                   </ul>
-                  <Button variant="outline" className="w-full text-primary border-primary hover:bg-primary hover:text-primary-foreground">
-                    Learn More
-                  </Button>
+                  <Link to={service.link}>
+                    <Button variant="outline" className="w-full text-primary border-primary hover:bg-primary hover:text-primary-foreground">
+                      Try Now
+                    </Button>
+                  </Link>
                 </CardContent>
               </Card>
             );
