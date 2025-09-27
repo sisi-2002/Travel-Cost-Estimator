@@ -63,9 +63,10 @@ const FlightSearch = () => {
       );
       console.log('Flight search results:', data);
       setFlights(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Flight search error:', err);
-      setError(err.message || 'An error occurred while searching for flights');
+      const message = err instanceof Error ? err.message : 'An error occurred while searching for flights';
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -80,7 +81,7 @@ const FlightSearch = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 pt-24 pb-8">
       <h1 className="text-3xl font-bold mb-6">Flight Price Agent</h1>
       
       <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md mb-8">
@@ -97,14 +98,33 @@ const FlightSearch = () => {
               required
             />
             {activeField === 'origin' && suggestions.length > 0 && (
-              <div className="absolute z-10 w-full bg-white border rounded shadow-lg">
-                {suggestions.map((airport) => (
+              <div className="absolute z-10 w-full bg-white border rounded shadow-lg max-h-60 overflow-y-auto">
+                {suggestions.map((location) => (
                   <div
-                    key={airport.id}
-                    className="p-2 hover:bg-gray-100 cursor-pointer"
-                    onClick={() => selectSuggestion(airport, 'origin')}
+                    key={location.id}
+                    className="p-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100"
+                    onClick={() => selectSuggestion(location, 'origin')}
                   >
-                    {airport.name} ({airport.iataCode})
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <div className="font-medium text-gray-900">
+                          {location.name}
+                        </div>
+                        {location.detailedName && location.detailedName !== location.name && (
+                          <div className="text-sm text-gray-600">
+                            {location.detailedName}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <div className="font-mono text-sm font-medium text-blue-600">
+                          {location.iataCode}
+                        </div>
+                        <div className="text-xs text-gray-500 capitalize">
+                          {location.subType?.toLowerCase()}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -123,14 +143,33 @@ const FlightSearch = () => {
               required
             />
             {activeField === 'destination' && suggestions.length > 0 && (
-              <div className="absolute z-10 w-full bg-white border rounded shadow-lg">
-                {suggestions.map((airport) => (
+              <div className="absolute z-10 w-full bg-white border rounded shadow-lg max-h-60 overflow-y-auto">
+                {suggestions.map((location) => (
                   <div
-                    key={airport.id}
-                    className="p-2 hover:bg-gray-100 cursor-pointer"
-                    onClick={() => selectSuggestion(airport, 'destination')}
+                    key={location.id}
+                    className="p-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100"
+                    onClick={() => selectSuggestion(location, 'destination')}
                   >
-                    {airport.name} ({airport.iataCode})
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <div className="font-medium text-gray-900">
+                          {location.name}
+                        </div>
+                        {location.detailedName && location.detailedName !== location.name && (
+                          <div className="text-sm text-gray-600">
+                            {location.detailedName}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <div className="font-mono text-sm font-medium text-blue-600">
+                          {location.iataCode}
+                        </div>
+                        <div className="text-xs text-gray-500 capitalize">
+                          {location.subType?.toLowerCase()}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -173,24 +212,10 @@ const FlightSearch = () => {
             />
           </div>
         </div>
-        
-        <div className="flex gap-4">
-          <button
-            type="submit"
-            disabled={loading}
-            className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:bg-blue-300"
-          >
-            {loading ? 'Searching...' : 'Search Flights'}
-          </button>
-          
-          {/* Debug button */}
-          <button
-            type="button"
-            onClick={debugFlightData}
-            className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-          >
-            Debug Data
-          </button>
+        {/* Agentic controls removed to restore original page */}
+        <div className="flex gap-4 mt-4">
+          <button type="submit" disabled={loading} className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:bg-blue-300">{loading ? 'Searching...' : 'Search Flights'}</button>
+          <button type="button" onClick={debugFlightData} className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">Debug Data</button>
         </div>
       </form>
       
