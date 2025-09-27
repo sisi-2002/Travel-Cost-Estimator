@@ -9,6 +9,7 @@ interface User {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  subscription_type:string;
 }
 
 interface AuthContextType {
@@ -16,6 +17,7 @@ interface AuthContextType {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  subscription_type:string;
   login: (email: string, password: string) => Promise<boolean>;
   register: (userData: RegisterData) => Promise<boolean>;
   logout: () => void;

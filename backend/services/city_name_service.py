@@ -20,7 +20,7 @@ CITY_NAME_MAPPINGS = {
     "TOK": "Tokyo",
     "NRT": "Tokyo (Narita)",
     "HND": "Tokyo (Haneda)",
-    "SYD": "Sydney",
+    "SYD": "Sydney",    
     "MEL": "Melbourne",
     "LAX": "Los Angeles",
     "SFO": "San Francisco",

@@ -10,6 +10,7 @@ const PlanWithAI = () => {
   const [form, setForm] = useState({
     origin: "",
     destination: "",
+    departure_date: "",  // NEW: Added departure_date
     nights: 1,
     total_budget: "",
     num_travelers: 1,
@@ -31,53 +32,66 @@ const PlanWithAI = () => {
   const { isAuthenticated } = useAuth(); // Use context for auth status
 
   const parseTravelPlan = (rawText) => {
+    // Improved parsing for enriched markdown
     if (!rawText) return [];
 
     const lines = rawText.split("\n");
     const structured = [];
     let currentSection = null;
+    let inCosts = false;
 
     lines.forEach((line) => {
       const trimmed = line.trim();
       if (!trimmed) return;
 
-      // Day heading
-      if (/^\*\*(.+)\*\*$/.test(trimmed)) {
-        const title = trimmed.replace(/^\*\*(.+)\*\*$/, "$1").trim();
-        currentSection = { type: "day", title, items: [] };
-        structured.push(currentSection);
+      if (trimmed.startsWith("Your Premium Travel Plan:") || trimmed.startsWith("Your Basic Travel Plan:")) {
+        structured.push({ type: "title", content: trimmed });
         return;
       }
 
-      // Time or subheading (Morning/Afternoon/Evening)
-      if (/^\*\s*\*\*(.+)\*\*$/.test(trimmed)) {
-        const title = trimmed.replace(/^\*\s*\*\*(.+)\*\*$/, "$1").trim();
-        currentSection = { type: "subsection", title, items: [] };
-        structured.push(currentSection);
+      if (trimmed.startsWith("Round-trip flight")) {
+        structured.push({ type: "flight", content: trimmed });
         return;
       }
 
-      // Bullet point
-      if (/^[-*+]\s+/.test(trimmed)) {
-        if (!currentSection) {
-          currentSection = { type: "subsection", title: "", items: [] };
-          structured.push(currentSection);
+      if (/^\*\*Day \d+/.test(trimmed)) {
+        currentSection = { type: "day", title: trimmed.replace(/\*\*/g, ""), items: [] };
+        structured.push(currentSection);
+        inCosts = false;
+        return;
+      }
+
+      if (trimmed === "**Estimated Costs Breakdown:**") {
+        currentSection = { type: "costs", title: "Estimated Costs Breakdown", items: [] };
+        structured.push(currentSection);
+        inCosts = true;
+        return;
+      }
+
+      if (trimmed.startsWith("**Total Estimated Cost:**")) {
+        structured.push({ type: "total_cost", content: trimmed.replace(/\*\*/g, "") });
+        inCosts = false;
+        return;
+      }
+
+      if (trimmed.startsWith("Notes:")) {
+        structured.push({ type: "notes", content: trimmed });
+        return;
+      }
+
+      if (currentSection) {
+        if (inCosts && trimmed.startsWith("- ")) {
+          currentSection.items.push(trimmed.substring(2));
+        } else {
+          currentSection.items.push(trimmed);
         }
-        currentSection.items.push(trimmed.replace(/^[-*+]\s+/, ""));
-        return;
       }
-
-      // Regular text
-      if (!currentSection) {
-        currentSection = { type: "subsection", title: "", items: [] };
-        structured.push(currentSection)
-      }
-      currentSection.items.push(trimmed);
     });
 
     return structured;
   };
 
+  
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm({ ...form, [name]: value });
@@ -133,16 +147,14 @@ const PlanWithAI = () => {
   };
 
   const handleSubmit = async () => {
-    // Check authentication using useAuth context
     if (!isAuthenticated) {
       setError("Please log in to generate a travel plan.");
-      navigate("/auth", { state: { from: "/plan-ai" } }); // Redirect to auth with return URL
+      navigate("/auth", { state: { from: "/plan-ai" } });
       return;
     }
 
-    // Basic validation
-    if (!form.destination || !form.total_budget) {
-      setError("Please fill in destination and budget fields.");
+    if (!form.destination || !form.total_budget || !form.departure_date) {  // NEW: Validate departure_date
+      setError("Please fill in destination, budget, and departure date fields.");
       return;
     }
 
@@ -158,10 +170,10 @@ const PlanWithAI = () => {
         return;
       }
 
-      // Prepare the payload to match backend TravelQuery model
       const payload = {
         destination: form.destination.trim(),
         origin: form.origin.trim(),
+        departure_date: form.departure_date,  // NEW: Added
         nights: parseInt(form.nights) || 1,
         total_budget: parseFloat(form.total_budget) || 0,
         num_travelers: parseInt(form.num_travelers) || 1,
@@ -177,15 +189,7 @@ const PlanWithAI = () => {
         language: form.language || null,
       };
       
-      console.log("Submitting payload:", payload);
-      console.log("Using token:", token.substring(0, 20) + "...");
-            
-      // Try different base URLs for development/production
-      const baseUrls = [
-        "", // Relative URL (same origin)
-        "http://localhost:8005",
-        "http://127.0.0.1:8005",
-      ];
+      const baseUrls = ["", "http://localhost:8005", "http://127.0.0.1:8005"];
       
       let response = null;
       let lastError = null;
@@ -193,8 +197,6 @@ const PlanWithAI = () => {
       for (const baseUrl of baseUrls) {
         try {
           const url = `${baseUrl}/api/v1/generate-travel-plan`;
-          console.log(`Trying URL: ${url}`);
-          
           response = await fetch(url, {
             method: "POST",
             headers: { 
@@ -206,30 +208,25 @@ const PlanWithAI = () => {
           });
           
           if (response.ok) {
-            console.log(`Success with URL: ${url}`);
             break;
           } else {
-            console.log(`Failed with URL: ${url}, status: ${response.status}`);
             const errorData = await response.json().catch(() => ({}));
             lastError = errorData.detail || `HTTP ${response.status}: ${response.statusText}`;
-
-            // Handle 403 specifically for limit reached
-                if (response.status === 403) {
-                    setLimitReached(true);
-                    setError(errorData.detail || "Daily limit reached or subscription expired. Upgrade to premium for unlimited access.");
-                    return;
-                }
-                if (response.status === 401) {
-                    localStorage.removeItem("access_token");
-                    localStorage.removeItem("jwt_token");
-                    localStorage.removeItem("token");
-                    setError("Authentication failed. Please log in again.");
-                    navigate("/auth", { state: { from: "/plan-ai" } });
-                    return;
-                }
+            if (response.status === 403) {
+              setLimitReached(true);
+              setError(errorData.detail || "Daily limit reached or subscription expired. Upgrade to premium for unlimited access.");
+              return;
+            }
+            if (response.status === 401) {
+              localStorage.removeItem("access_token");
+              localStorage.removeItem("jwt_token");
+              localStorage.removeItem("token");
+              setError("Authentication failed. Please log in again.");
+              navigate("/auth", { state: { from: "/plan-ai" } });
+              return;
+            }
           }
         } catch (fetchError) {
-          console.log(`Network error with URL: ${baseUrl}/api/v1/generate-travel-plan`);
           lastError = fetchError.message;
           continue;
         }
@@ -240,12 +237,10 @@ const PlanWithAI = () => {
       }
 
       const data = await response.json();
-      console.log("Received data:", data);
-      
       setResult(data.answer || "No plan generated.");
+      console.log("Travel plan generated:", data.answer);
       
     } catch (err) {
-      console.error("Error generating plan:", err);
       const errorMessage = err instanceof Error ? err.message : "Error generating travel plan. Please try again.";
       setError(`Failed to generate travel plan: ${errorMessage}`);
     } finally {
@@ -297,7 +292,7 @@ const PlanWithAI = () => {
                 <input
                   className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   name="origin"
-                  placeholder="e.g., Paris, Tokyo, Maldives"
+                  placeholder="e.g., New York"
                   value={form.origin}
                   onChange={handleChange}
                   onKeyPress={handleKeyPress}
@@ -311,10 +306,24 @@ const PlanWithAI = () => {
                 <input
                   className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   name="destination"
-                  placeholder="e.g., Paris, Tokyo, Maldives"
+                  placeholder="e.g., Paris"
                   value={form.destination}
                   onChange={handleChange}
                   onKeyPress={handleKeyPress}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Departure Date *  {/* NEW: Added */}
+                </label>
+                <input
+                  className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  name="departure_date"
+                  type="date"
+                  value={form.departure_date}
+                  onChange={handleChange}
                   required
                 />
               </div>
@@ -619,50 +628,70 @@ const PlanWithAI = () => {
 
       {/* Results Display (Legacy AI Plan) */}
       {result && (
-        <div className="mt-8 p-6 bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl shadow-lg">
-          <h3 className="font-bold text-2xl mb-4 text-green-800 flex items-center">
-            <svg className="w-7 h-7 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Your AI-Generated Travel Plan
-          </h3>
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-green-100 max-h-96 overflow-y-auto">
-            {parseTravelPlan(result).map((section, index) => (
-              <div key={index} className="mb-4">
-                {section.title && (
-                  <h4 className={`font-semibold ${section.type === 'day' ? 'text-xl' : 'text-lg'} text-green-800 mb-2`}>
-                    {section.title}
-                  </h4>
-                )}
-                {section.items.length > 0 && (
-                  <ul className="list-disc list-inside text-gray-800 text-sm leading-relaxed">
-                    {section.items.map((item, i) => (
-                      <li key={i}>{item}</li>
-                    ))}
-                  </ul>
-                )}
+            <div className="mt-8 p-6 bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl shadow-lg">
+              <h3 className="font-bold text-2xl mb-4 text-green-800 flex items-center">
+                <svg className="w-7 h-7 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Your AI-Generated Travel Plan
+              </h3>
+              <div className="bg-white p-6 rounded-lg shadow-sm border border-green-100 max-h-96 overflow-y-auto">
+                {parseTravelPlan(result).map((section, index) => (
+                  <div key={index} className="mb-4">
+                    {section.type === "title" && (
+                      <h4 className="text-xl font-bold mb-2">{section.content}</h4>
+                    )}
+                    {section.type === "flight" && (
+                      <p className="text-blue-600 font-medium">{section.content}</p>
+                    )}
+                    {section.type === "day" && (
+                      <>
+                        <h4 className="text-lg font-semibold mb-2">{section.title}</h4>
+                        <ul className="list-disc list-inside text-gray-800 text-sm leading-relaxed">
+                          {section.items.map((item, i) => (
+                            <li key={i}>{item}</li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+                    {section.type === "costs" && (
+                      <>
+                        <h4 className="text-lg font-semibold mb-2">{section.title}</h4>
+                        <ul className="list-disc list-inside text-gray-800 text-sm">
+                          {section.items.map((item, i) => (
+                            <li key={i}>{item}</li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+                    {section.type === "total_cost" && (
+                      <p className="font-bold text-green-700">{section.content}</p>
+                    )}
+                    {section.type === "notes" && (
+                      <p className="text-gray-600 italic">{section.content}</p>
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
 
-          {/* Action Buttons */}
-          <div className="mt-4 flex gap-3 justify-end">
-            <button
-              onClick={copyToClipboard}
-              className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm font-medium"
-            >
-              📋 Copy Plan
-            </button>
+              {/* Action Buttons */}
+              <div className="mt-4 flex gap-3 justify-end">
+                <button
+                  onClick={copyToClipboard}
+                  className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm font-medium"
+                >
+                  📋 Copy Plan
+                </button>
 
-            <button
-              onClick={() => setResult(null)}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
-            >
-              ✨ Plan Another Trip
-            </button>
-          </div>
-        </div>
-      )}
+                <button
+                  onClick={() => setResult(null)}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+                >
+                  ✨ Plan Another Trip
+                </button>
+              </div>
+            </div>
+          )}
 
       {/* Tips Section */}
       <div className="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-200">
