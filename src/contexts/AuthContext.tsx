@@ -20,6 +20,7 @@ interface AuthContextType {
   register: (userData: RegisterData) => Promise<boolean>;
   logout: () => void;
   updateProfile: (userData: Partial<User>) => Promise<boolean>;
+  deleteAccount: () => Promise<boolean>;
 }
 
 interface RegisterData {
@@ -177,6 +178,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const deleteAccount = async (): Promise<boolean> => {
+    if (!token) return false;
+    
+    try {
+      const response = await fetch(buildApiUrl('/api/v1/auth/me'), {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        // Clear user data and logout
+        setUser(null);
+        setToken(null);
+        localStorage.removeItem('token');
+        return true;
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Account deletion failed');
+      }
+    } catch (error) {
+      console.error('Account deletion error:', error);
+      throw error;
+    }
+  };
+
   const value: AuthContextType = {
     user,
     token,
@@ -186,6 +215,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     register,
     logout,
     updateProfile,
+    deleteAccount,
   };
 
   return (

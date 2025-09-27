@@ -8,18 +8,25 @@ import { Link, useLocation } from "react-router-dom";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
 
-  const navigation = [
-    { name: "Home", href: "#home" },
+  const publicNavigation = [
+    { name: "Home", href: "/" },
+    { name: "About", href: "/about" },
+    { name: "Contact", href: "/contact" },
+  ];
+
+  const protectedNavigation = [
     { name: "Flight Search", href: "/flights" },
     { name: "Hotel Search", href: "/hotels" },
-    { name: "Services", href: "#services" },
-    { name: "About", href: "#about" },
-    { name: "Contact", href: "#contact" },
-    { name: "Plan with AI ", href: "/plan-ai" }, // <-- Added this line
-    ...(isAuthenticated ? [{ name: "Dashboard", href: "/dashboard" }] : []),
+    { name: "Plan with AI", href: "/plan-ai" },
+    { name: "Dashboard", href: "/dashboard" },
+  ];
+
+  const navigation = [
+    ...publicNavigation,
+    ...(isAuthenticated ? protectedNavigation : []),
   ];
 
   return (
@@ -44,13 +51,16 @@ const Navbar = () => {
                 <Link
                   key={item.name}
                   to={item.href}
-                  className={`transition-colors duration-300 font-medium ${
+                  className={`transition-colors duration-300 font-medium relative ${
                     isActive 
                       ? 'text-primary' 
                       : 'text-foreground hover:text-primary'
                   }`}
                 >
                   {item.name}
+                  {isActive && (
+                    <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-primary rounded-full" />
+                  )}
                 </Link>
               );
             })}
@@ -58,7 +68,12 @@ const Navbar = () => {
 
           {/* Desktop CTA Buttons */}
           <div className="hidden md:flex items-center space-x-4">
-            {isAuthenticated ? (
+            {isLoading ? (
+              <div className="flex items-center space-x-2 text-muted-foreground">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                <span className="text-sm">Loading...</span>
+              </div>
+            ) : isAuthenticated ? (
               <UserProfile />
             ) : (
               <>
@@ -83,18 +98,64 @@ const Navbar = () => {
         {isMenuOpen && (
           <div className="md:hidden">
             <div className="px-2 pt-2 pb-3 space-y-1 bg-background/95 backdrop-blur-lg rounded-lg mt-2 border border-border/50">
-              {navigation.map((item) => (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className="block px-3 py-2 text-foreground hover:text-primary transition-colors duration-300 font-medium"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  {item.name}
-                </Link>
-              ))}
+              {/* Public Navigation */}
+              {publicNavigation.map((item) => {
+                const isActive = location.pathname === item.href;
+                return (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    className={`block px-3 py-2 transition-colors duration-300 font-medium ${
+                      isActive 
+                        ? 'text-primary bg-primary/10' 
+                        : 'text-foreground hover:text-primary'
+                    }`}
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    {item.name}
+                  </Link>
+                );
+              })}
+              
+              {/* Protected Navigation */}
+              {isAuthenticated ? (
+                protectedNavigation.map((item) => {
+                  const isActive = location.pathname === item.href;
+                  return (
+                    <Link
+                      key={item.name}
+                      to={item.href}
+                      className={`block px-3 py-2 transition-colors duration-300 font-medium ${
+                        isActive 
+                          ? 'text-primary bg-primary/10' 
+                          : 'text-foreground hover:text-primary'
+                      }`}
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      {item.name}
+                    </Link>
+                  );
+                })
+              ) : (
+                <div className="px-3 py-2 text-muted-foreground text-sm">
+                  Sign in to access:
+                  <div className="ml-2 mt-1 space-y-1">
+                    {protectedNavigation.map((item) => (
+                      <div key={item.name} className="text-xs text-muted-foreground">
+                        • {item.name}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
               <div className="pt-4 space-y-2">
-                {isAuthenticated ? (
+                {isLoading ? (
+                  <div className="flex items-center justify-center space-x-2 text-muted-foreground py-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                    <span className="text-sm">Loading...</span>
+                  </div>
+                ) : isAuthenticated ? (
                   <UserProfile />
                 ) : (
                   <AuthModal trigger={<Button variant="ghost" className="w-full justify-start">Sign In</Button>} />
