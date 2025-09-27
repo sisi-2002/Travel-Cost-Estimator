@@ -32,65 +32,181 @@ const PlanWithAI = () => {
   const { isAuthenticated } = useAuth(); // Use context for auth status
 
   const parseTravelPlan = (rawText) => {
-    // Improved parsing for enriched markdown
-    if (!rawText) return [];
+    if (!rawText) {
+        console.warn("No raw text provided to parseTravelPlan");
+        return [{ type: "error", content: "No plan generated." }];
+    }
 
+    console.log("Raw text received:", rawText);
     const lines = rawText.split("\n");
     const structured = [];
     let currentSection = null;
+    let inJsonBlock = false;
+    let jsonContent = "";
     let inCosts = false;
+    let inNotes = false;
 
-    lines.forEach((line) => {
-      const trimmed = line.trim();
-      if (!trimmed) return;
+    // Helper to parse JSON and convert to structured format
+    const parseJsonToStructured = (jsonStr) => {
+        try {
+            const plan = JSON.parse(jsonStr);
+            const result = [];
 
-      if (trimmed.startsWith("Your Premium Travel Plan:") || trimmed.startsWith("Your Basic Travel Plan:")) {
-        structured.push({ type: "title", content: trimmed });
-        return;
-      }
+            // Add itinerary as day sections
+            if (plan.itinerary && Array.isArray(plan.itinerary)) {
+                plan.itinerary.forEach((day) => {
+                    result.push({
+                        type: "day",
+                        title: `Day ${day.day}: ${day.location || "Main Destination"}`,
+                        items: [day.activities]
+                    });
+                });
+            }
 
-      if (trimmed.startsWith("Round-trip flight")) {
-        structured.push({ type: "flight", content: trimmed });
-        return;
-      }
+            // Add estimated costs
+            if (plan.estimated_costs && plan.estimated_costs.breakdown) {
+                const costItems = Object.entries(plan.estimated_costs.breakdown).map(
+                    ([category, amount]) => `${category.charAt(0).toUpperCase() + category.slice(1)}: ${amount} USD`
+                );
+                result.push({
+                    type: "costs",
+                    title: "Estimated Costs Breakdown",
+                    items: costItems
+                });
+                result.push({
+                    type: "total_cost",
+                    content: `Total Estimated Cost: ${plan.estimated_costs.total} USD`
+                });
+            }
 
-      if (/^\*\*Day \d+/.test(trimmed)) {
-        currentSection = { type: "day", title: trimmed.replace(/\*\*/g, ""), items: [] };
-        structured.push(currentSection);
-        inCosts = false;
-        return;
-      }
+            // Add notes
+            if (plan.notes) {
+                result.push({
+                    type: "notes",
+                    title: "Notes and Recommendations",
+                    items: plan.notes.split("\n").filter(note => note.trim())
+                });
+            }
 
-      if (trimmed === "**Estimated Costs Breakdown:**") {
-        currentSection = { type: "costs", title: "Estimated Costs Breakdown", items: [] };
-        structured.push(currentSection);
-        inCosts = true;
-        return;
-      }
-
-      if (trimmed.startsWith("**Total Estimated Cost:**")) {
-        structured.push({ type: "total_cost", content: trimmed.replace(/\*\*/g, "") });
-        inCosts = false;
-        return;
-      }
-
-      if (trimmed.startsWith("Notes:")) {
-        structured.push({ type: "notes", content: trimmed });
-        return;
-      }
-
-      if (currentSection) {
-        if (inCosts && trimmed.startsWith("- ")) {
-          currentSection.items.push(trimmed.substring(2));
-        } else {
-          currentSection.items.push(trimmed);
+            return result;
+        } catch (e) {
+            console.warn("Failed to parse JSON:", e.message);
+            return [];
         }
-      }
+    };
+
+    lines.forEach((line, index) => {
+        const trimmed = line.trim();
+        if (!trimmed) return;
+
+        console.log(`Line ${index}:`, trimmed);
+
+        // Handle JSON code block
+        if (trimmed.startsWith("```json")){
+            inJsonBlock = true;
+            jsonContent = "";
+            return;
+        }
+        if (trimmed.startsWith("```") && inJsonBlock) {
+            inJsonBlock = false;
+            // Parse the collected JSON
+            const parsed = parseJsonToStructured(jsonContent);
+            structured.push(...parsed);
+            return;
+        }
+        if (inJsonBlock) {
+            jsonContent += line + "\n";
+            return;
+        }
+
+        // Handle title
+        if (
+            trimmed.startsWith("Your Premium Travel Plan:") ||
+            trimmed.startsWith("Your Basic Travel Plan:") ||
+            trimmed.startsWith("Here's a suggested") ||
+            trimmed.startsWith("However, to adhere")
+        ) {
+            structured.push({ type: "title", content: trimmed });
+            inCosts = false;
+            inNotes = false;
+            currentSection = null;
+            return;
+        }
+
+        // Handle flight details
+        if (trimmed.startsWith("Round-trip flight") || trimmed.startsWith("No flights needed")) {
+            structured.push({ type: "flight", content: trimmed });
+            inCosts = false;
+            inNotes = false;
+            currentSection = null;
+            return;
+        }
+
+        // Handle day sections
+        if (/^\*\*Day \d+/.test(trimmed)) {
+            currentSection = { type: "day", title: trimmed.replace(/\*\*/g, ""), items: [] };
+            structured.push(currentSection);
+            inCosts = false;
+            inNotes = false;
+            return;
+        }
+
+        // Handle costs section
+        if (trimmed === "**Estimated Costs Breakdown:**") {
+            currentSection = { type: "costs", title: "Estimated Costs Breakdown", items: [] };
+            structured.push(currentSection);
+            inCosts = true;
+            inNotes = false;
+            return;
+        }
+
+        // Handle total cost
+        if (trimmed.startsWith("**Total Estimated Cost:**")) {
+            structured.push({ type: "total_cost", content: trimmed.replace(/\*\*/g, "") });
+            inCosts = false;
+            inNotes = false;
+            currentSection = null;
+            return;
+        }
+
+        // Handle notes and recommendations
+        if (
+            trimmed.startsWith("Notes:") ||
+            trimmed.startsWith("Some recommended hotels") ||
+            trimmed.startsWith("Some recommended halal restaurants") ||
+            trimmed.startsWith("Some recommended French-language resources")
+        ) {
+            currentSection = { type: "notes", title: "Notes and Recommendations", items: [] };
+            structured.push(currentSection);
+            inNotes = true;
+            inCosts = false;
+            if (trimmed.startsWith("Notes:")) {
+                currentSection.items.push(trimmed.substring(6).trim());
+            } else {
+                currentSection.items.push(trimmed);
+            }
+            return;
+        }
+
+        // Add items to current section
+        if (currentSection) {
+            if (inCosts && trimmed.startsWith("- ")) {
+                currentSection.items.push(trimmed.substring(2));
+            } else if (inNotes) {
+                currentSection.items.push(trimmed);
+            } else {
+                currentSection.items.push(trimmed);
+            }
+        }
     });
 
+    console.log("Parsed structured output:", structured);
+    if (structured.length === 0) {
+        console.warn("No structured data parsed; returning raw text as fallback");
+        return [{ type: "raw", content: rawText }];
+    }
     return structured;
-  };
-
+};
   
   const handleChange = (e) => {
     const { name, value } = e.target;
